@@ -1,0 +1,25 @@
+{
+  "name": "phoenix-one",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Phoenix One engineering platform and PDOS V1 authority core.",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "node --test",
+    "contracts:validate": "node tools/validate-contracts.mjs",
+    "openapi:validate": "node tools/validate-openapi.mjs",
+    "check": "pnpm typecheck && pnpm contracts:validate && pnpm openapi:validate && pnpm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "typescript": "^5.7.2",
+    "yaml": "^2.7.0"
+  }
+}
