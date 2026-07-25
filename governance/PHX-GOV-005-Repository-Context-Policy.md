@@ -1,15 +1,29 @@
 # PHX-GOV-005 Repository Context Policy v1.0
 
-This policy defines the canonical repository context for the Phoenix project.
+Status: APPROVED
 
-Canonical Drive Folder ID: 18sPNWzPn22YGDAgMcvJd_f_DSIUhgpLg
-Canonical GitHub Repository: thomascatulli-1976/phoenix
+## Purpose
+Defines the permanent repository context for Phoenix.
 
-Rules:
-1. The repository context is implicit for all Phoenix work.
-2. Users must not be asked to repost the Drive or GitHub repository.
-3. Drive is the business source of truth.
-4. GitHub is the technical implementation source.
-5. Persistence must be verified before being reported.
-6. Repository anchor changes require governance approval.
-7. Future automation will load these anchors automatically.
+## Canonical Anchors
+Drive Folder ID: 18sPNWzPn22YGDAgMcvJd_f_DSIUhgpLg
+GitHub Repository: thomascatulli-1976/phoenix
+
+## Principles
+- Repository context is implicit.
+- Drive is the business source of truth.
+- GitHub is the implementation source.
+- Every persistence operation must be verified.
+- Repository changes require governance approval.
+
+## Runtime
+All Phoenix agents shall preload these anchors before executing work and shall not request them again from the user unless a repository migration is requested.
+
+## Persistence Workflow
+Develop -> Persist -> Verify -> Report.
+
+## Reporting
+Every save reports artifact, target, identifier and verification result.
+
+## Future
+This policy is the basis for the Phoenix Enterprise Repository Agent (PERA).
