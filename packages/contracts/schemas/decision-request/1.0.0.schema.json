@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://phoenix.one/contracts/pdos/decision-request/1.0.0",
+  "title": "PDOS Decision Request 1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decision_request_id",
+    "contract_version",
+    "domain",
+    "environment",
+    "requested_at",
+    "requested_by",
+    "objective",
+    "trace_id",
+    "correlation_id"
+  ],
+  "properties": {
+    "decision_request_id": { "type": "string", "minLength": 1 },
+    "contract_version": { "const": "1.0.0" },
+    "domain": { "type": "string", "enum": ["sports", "trading", "research", "coach", "scout"] },
+    "environment": { "type": "string", "enum": ["development", "test", "shadow", "paper-production"] },
+    "requested_at": { "type": "string", "format": "date-time" },
+    "requested_by": { "type": "string", "minLength": 1 },
+    "objective": { "type": "string", "minLength": 1 },
+    "candidate_action_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "default": []
+    },
+    "evidence_package_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "default": []
+    },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "correlation_id": { "type": "string", "minLength": 1 }
+  }
+}
