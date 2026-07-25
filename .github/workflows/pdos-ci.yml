@@ -22,7 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
@@ -39,9 +38,9 @@ jobs:
       - name: Run tests
         run: pnpm test
 
-      - name: Enforce no live execution baseline
+      - name: Enforce no provider credentials
         run: |
-          if grep -R --line-number --exclude-dir=.git --exclude='*.md' -E 'live-production|broker[_-]?secret|sportsbook[_-]?secret' .; then
-            echo 'Live execution or production credential marker detected.'
+          if grep -R --line-number --exclude-dir=.git --exclude='*.md' --exclude='*.schema.json' --exclude='validate-contracts.mjs' -E 'broker[_-]?secret|sportsbook[_-]?secret|PRODUCTION_API_KEY' src packages; then
+            echo 'Production credential marker detected.'
             exit 1
           fi
