@@ -1,0 +1,121 @@
+openapi: 3.1.0
+info:
+  title: Phoenix PDOS API
+  version: 0.1.0
+  description: Non-production V1 authority-core API baseline.
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+security:
+  - bearerAuth: []
+paths:
+  /decisions:
+    post:
+      operationId: createDecision
+      tags: [Decisions]
+      parameters:
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/TraceId'
+        - $ref: '#/components/parameters/ContractVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../contracts/schemas/decision-request/1.0.0.schema.json'
+      responses:
+        '201':
+          description: Decision request accepted and created.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [decision_id, status, trace_id]
+                properties:
+                  decision_id: { type: string }
+                  status: { type: string, enum: [created] }
+                  trace_id: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailure' }
+  /decisions/{decisionId}:
+    get:
+      operationId: getDecision
+      tags: [Decisions]
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/TraceId'
+      responses:
+        '200':
+          description: Current canonical Decision projection.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Decision not found.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: true
+      schema: { type: string, minLength: 1 }
+    TraceId:
+      name: X-Trace-ID
+      in: header
+      required: true
+      schema: { type: string, minLength: 1 }
+    ContractVersion:
+      name: X-Contract-Version
+      in: header
+      required: true
+      schema: { type: string, const: 1.0.0 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 8 }
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error_id, error_code, message, layer, severity, retryable, trace_id]
+      properties:
+        error_id: { type: string }
+        error_code: { type: string }
+        message: { type: string }
+        layer: { type: string }
+        severity: { type: string, enum: [info, warning, error, critical] }
+        retryable: { type: boolean }
+        trace_id: { type: string }
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unauthorized:
+      description: Authentication required or invalid.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Authority or scope denied.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Conflict:
+      description: State, concurrency or idempotency conflict.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    ValidationFailure:
+      description: Semantic contract validation failed.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
