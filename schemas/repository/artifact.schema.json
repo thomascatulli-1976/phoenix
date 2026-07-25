@@ -1,1 +1,79 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://phoenix.one/schemas/repository/artifact.schema.json","title":"Phoenix Artifact","type":"object","additionalProperties":false,"required":["artifact_id","title","artifact_type","version","lifecycle_status","approval_status","owner","approval_authority","canonical_drive_file_id","canonical_drive_uri","canonical_path","synchronization_status","health_status","effective_date","last_verified_at"],"properties":{"artifact_id":{"type":"string","pattern":"^PHX-[A-Z0-9]+-[0-9]{3}$"},"title":{"type":"string","minLength":1},"artifact_type":{"type":"string"},"version":{"type":"string","pattern":"^[0-9]+\\.[0-9]+\\.[0-9]+$"},"lifecycle_status":{"enum":["DRAFT","REVIEW","APPROVED","ACTIVE","SUPERSEDED","ARCHIVED"]},"approval_status":{"enum":["NOT_SUBMITTED","IN_REVIEW","APPROVED","REJECTED","WITHDRAWN"]},"owner":{"type":"string","minLength":1},"approval_authority":{"type":"string","minLength":1},"product":{"type":"string"},"domain":{"type":"string"},"module":{"type":["string","null"]},"capability":{"type":"string"},"canonical_drive_file_id":{"type":"string","minLength":1},"canonical_drive_uri":{"type":"string","format":"uri"},"canonical_path":{"type":"string","minLength":1},"github_repository":{"type":["string","null"]},"github_path":{"type":["string","null"]},"synchronization_status":{"enum":["IN_SYNC","DRIVE_AHEAD","GITHUB_AHEAD","DIVERGED","NOT_APPLICABLE","UNKNOWN"]},"health_status":{"enum":["HEALTHY","WARNING","CRITICAL","UNVERIFIED"]},"effective_date":{"type":"string","format":"date"},"review_date":{"type":["string","null"],"format":"date"},"tags":{"type":"array","items":{"type":"string"},"uniqueItems":true},"relationships":{"type":"array","items":{"type":"string"},"uniqueItems":true},"supersedes":{"type":["string","null"]},"superseded_by":{"type":["string","null"]},"last_verified_at":{"type":"string","format":"date-time"},"notes":{"type":"string"}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://phoenix.one/schemas/repository/artifact.schema.json",
+  "title": "PHX-SCH-001 Phoenix Artifact Schema",
+  "description": "Canonical executable contract for every governed Phoenix repository artifact.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_id",
+    "title",
+    "artifact_type",
+    "version",
+    "lifecycle_status",
+    "approval_status",
+    "owner",
+    "approval_authority",
+    "product",
+    "domain",
+    "canonical_drive_file_id",
+    "canonical_drive_uri",
+    "canonical_path",
+    "synchronization_status",
+    "health_status",
+    "effective_date",
+    "last_verified_at"
+  ],
+  "properties": {
+    "artifact_id": {"type": "string", "pattern": "^PHX-[A-Z0-9]+-[0-9]{3}$"},
+    "title": {"type": "string", "minLength": 3, "maxLength": 240},
+    "description": {"type": "string", "maxLength": 4000},
+    "artifact_type": {
+      "enum": ["POLICY", "STANDARD", "ARCHITECTURE", "DECISION", "SPECIFICATION", "SCHEMA", "REGISTRY", "PROCEDURE", "CONTROL", "REPORT", "LOG", "TEMPLATE", "CODE", "DATA", "OTHER"]
+    },
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "lifecycle_status": {"enum": ["DRAFT", "REVIEW", "APPROVED", "ACTIVE", "SUPERSEDED", "ARCHIVED"]},
+    "approval_status": {"enum": ["NOT_SUBMITTED", "IN_REVIEW", "APPROVED", "REJECTED", "WITHDRAWN"]},
+    "owner": {"type": "string", "minLength": 1},
+    "approval_authority": {"type": "string", "minLength": 1},
+    "product": {"type": "string", "minLength": 1},
+    "domain": {"type": "string", "minLength": 1},
+    "module": {"type": ["string", "null"]},
+    "capability": {"type": ["string", "null"]},
+    "classification": {"enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]},
+    "canonical_drive_file_id": {"type": "string", "minLength": 1},
+    "canonical_drive_uri": {"type": "string", "format": "uri"},
+    "canonical_path": {"type": "string", "minLength": 1},
+    "github_repository": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"},
+    "github_path": {"type": ["string", "null"]},
+    "github_commit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{40}$"},
+    "content_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+    "synchronization_status": {"enum": ["IN_SYNC", "DRIVE_AHEAD", "GITHUB_AHEAD", "DIVERGED", "NOT_APPLICABLE", "UNKNOWN"]},
+    "health_status": {"enum": ["HEALTHY", "WARNING", "CRITICAL", "UNVERIFIED"]},
+    "effective_date": {"type": "string", "format": "date"},
+    "review_date": {"type": ["string", "null"], "format": "date"},
+    "created_at": {"type": ["string", "null"], "format": "date-time"},
+    "updated_at": {"type": ["string", "null"], "format": "date-time"},
+    "last_verified_at": {"type": "string", "format": "date-time"},
+    "tags": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "default": []},
+    "relationships": {"type": "array", "items": {"type": "string", "pattern": "^PHX-[A-Z0-9]+-[0-9]{3}$"}, "uniqueItems": true, "default": []},
+    "supersedes": {"type": ["string", "null"], "pattern": "^PHX-[A-Z0-9]+-[0-9]{3}$"},
+    "superseded_by": {"type": ["string", "null"], "pattern": "^PHX-[A-Z0-9]+-[0-9]{3}$"},
+    "retention_class": {"enum": ["PERMANENT", "LONG_TERM", "OPERATIONAL", "TEMPORARY"]},
+    "notes": {"type": "string", "maxLength": 4000}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"lifecycle_status": {"const": "ACTIVE"}}},
+      "then": {"properties": {"approval_status": {"const": "APPROVED"}}}
+    },
+    {
+      "if": {"properties": {"synchronization_status": {"const": "IN_SYNC"}}},
+      "then": {"required": ["github_repository", "github_path", "github_commit"]}
+    },
+    {
+      "if": {"properties": {"lifecycle_status": {"const": "SUPERSEDED"}}},
+      "then": {"required": ["superseded_by"]}
+    }
+  ]
+}
