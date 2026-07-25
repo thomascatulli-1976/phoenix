@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.phoenix.one/foundation/metadata/1.0.0",
+  "title": "Phoenix Universal Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ownerId", "createdAt", "createdBy", "modifiedAt", "modifiedBy", "lifecycleStatus", "classification"],
+  "properties": {
+    "ownerId": {"type": "string", "minLength": 1},
+    "stewardId": {"type": "string", "minLength": 1},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "createdBy": {"type": "string", "minLength": 1},
+    "modifiedAt": {"type": "string", "format": "date-time"},
+    "modifiedBy": {"type": "string", "minLength": 1},
+    "lifecycleStatus": {"enum": ["PROPOSED", "ACTIVE", "SUSPENDED", "DEPRECATED", "SUPERSEDED", "ARCHIVED"]},
+    "maturityLevel": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "verificationStatus": {"enum": ["UNVERIFIED", "PARTIALLY_VERIFIED", "VERIFIED", "REJECTED"]},
+    "classification": {"enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]},
+    "tenantId": {"type": "string", "minLength": 1},
+    "tags": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"}},
+    "labels": {"type": "object", "additionalProperties": {"type": "string"}},
+    "sourceSystem": {"type": "string"},
+    "provenanceRef": {"type": "string"},
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["KNOWN", "UNKNOWN", "NOT_APPLICABLE"]},
+        "value": {"type": "number", "minimum": 0, "maximum": 1},
+        "method": {"type": "string"},
+        "assessorRef": {"type": "string"},
+        "assessedAt": {"type": "string", "format": "date-time"},
+        "limitations": {"type": "array", "items": {"type": "string"}}
+      },
+      "allOf": [{"if": {"properties": {"status": {"const": "KNOWN"}}}, "then": {"required": ["value", "method", "assessedAt"]}}]
+    },
+    "approvalStatus": {"enum": ["NOT_REQUIRED", "PENDING", "APPROVED", "REJECTED", "REVOKED"]},
+    "approvalAuthorityRef": {"type": "string"},
+    "retentionPolicyRef": {"type": "string"},
+    "accessPolicyRef": {"type": "string"},
+    "language": {"type": "string", "pattern": "^[a-z]{2}(-[A-Z]{2})?$"},
+    "region": {"type": "string"},
+    "effectiveFrom": {"type": "string", "format": "date-time"},
+    "effectiveTo": {"type": "string", "format": "date-time"},
+    "lastObservedAt": {"type": "string", "format": "date-time"},
+    "lastVerifiedAt": {"type": "string", "format": "date-time"},
+    "correlationId": {"type": "string"},
+    "extensions": {"type": "object", "propertyNames": {"pattern": "^[a-z][a-z0-9.-]+$"}}
+  }
+}
