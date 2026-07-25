@@ -1,0 +1,47 @@
+name: PDOS V1 Conformance
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Validate canonical contracts
+        run: pnpm contracts:validate
+
+      - name: Validate OpenAPI baseline
+        run: pnpm openapi:validate
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Enforce no live execution baseline
+        run: |
+          if grep -R --line-number --exclude-dir=.git --exclude='*.md' -E 'live-production|broker[_-]?secret|sportsbook[_-]?secret' .; then
+            echo 'Live execution or production credential marker detected.'
+            exit 1
+          fi
