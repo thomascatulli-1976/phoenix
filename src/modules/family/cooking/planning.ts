@@ -9,6 +9,7 @@ import type {
   MemberMealVariant,
   ShoppingListItem,
 } from "./domain";
+import { scoreRecipeFromFeedback } from "./learning";
 
 export interface RecipeCandidate {
   id: string;
@@ -25,11 +26,14 @@ export interface PlanningRequest {
   candidates: RecipeCandidate[];
   availableIngredientIds: string[];
   maximumMinutes?: number;
+  learningWeight?: number;
 }
 
 export interface CandidateAssessment {
   candidateId: string;
   score: number;
+  baseScore: number;
+  learningAdjustment: number;
   blocked: boolean;
   reasons: string[];
   memberVariants: MemberMealVariant[];
@@ -63,6 +67,16 @@ const constraintsForMember = (
       constraint.metadata.consentStatus === "granted",
   );
 
+const boundedLearningAdjustment = (
+  context: FamilyContextSnapshot,
+  recipeId: string,
+  learningWeight: number,
+): number => {
+  const learned = scoreRecipeFromFeedback(context, recipeId).householdScore;
+  const bounded = Math.max(-20, Math.min(20, learned));
+  return bounded * learningWeight;
+};
+
 const assessCandidate = (
   request: PlanningRequest,
   candidate: RecipeCandidate,
@@ -70,14 +84,14 @@ const assessCandidate = (
   const reasons: string[] = [];
   const variants: MemberMealVariant[] = [];
   const appliedConstraintIds = new Set<string>();
-  let score = 100;
+  let baseScore = 100;
   let blocked = false;
 
   if (
     request.maximumMinutes !== undefined &&
     candidate.estimatedMinutes > request.maximumMinutes
   ) {
-    score -= 40;
+    baseScore -= 40;
     reasons.push("candidate exceeds maximum preparation time");
   }
 
@@ -85,7 +99,7 @@ const assessCandidate = (
   const missingCount = candidate.ingredients.filter(
     (ingredient) => !available.has(ingredient.ingredientId),
   ).length;
-  score -= missingCount * 3;
+  baseScore -= missingCount * 3;
   if (missingCount > 0) {
     reasons.push(`${missingCount} ingredient(s) must be purchased`);
   }
@@ -110,16 +124,16 @@ const assessCandidate = (
           removedIngredientIds.add(ingredient.ingredientId),
         );
         notes.push(`Strict constraint applied: ${constraint.label}`);
-        score -= 12;
+        baseScore -= 12;
       } else if (constraint.severity === "avoid") {
         conflicts.forEach((ingredient) =>
           removedIngredientIds.add(ingredient.ingredientId),
         );
         notes.push(`Avoidance applied: ${constraint.label}`);
-        score -= 6;
+        baseScore -= 6;
       } else {
         notes.push(`Preference conflict noted: ${constraint.label}`);
-        score -= 2;
+        baseScore -= 2;
       }
     }
 
@@ -142,13 +156,24 @@ const assessCandidate = (
     }
   }
 
-  if (blocked) {
-    score = Number.NEGATIVE_INFINITY;
+  const learningAdjustment = boundedLearningAdjustment(
+    request.context,
+    candidate.id,
+    request.learningWeight ?? 0.5,
+  );
+  if (learningAdjustment !== 0) {
+    reasons.push(`governed learning adjustment: ${learningAdjustment}`);
   }
+
+  const score = blocked
+    ? Number.NEGATIVE_INFINITY
+    : baseScore + learningAdjustment;
 
   return {
     candidateId: candidate.id,
     score,
+    baseScore,
+    learningAdjustment,
     blocked,
     reasons,
     memberVariants: variants,
