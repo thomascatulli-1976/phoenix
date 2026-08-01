@@ -1,6 +1,10 @@
-import { approveWeeklyPlan, requestWeeklyPlanApproval } from "../cooking/approval";
+import {
+  decideMealPlanApproval,
+  requestMealPlanApproval,
+} from "../cooking/approval";
 import { compileThermomixRecipe } from "../cooking/compiler";
-import { createCookingSession, startCookingSession } from "../cooking/session";
+import type { CookingSession } from "../cooking/domain";
+import { startCookingSession } from "../cooking/session";
 import { planFamilyWeek } from "../cooking/weekly-planning";
 import { demoFamilyContext } from "./demo-family";
 import {
@@ -31,19 +35,21 @@ export const runDemoFamilyScenario = () => {
     };
   }
 
-  const approvalRequest = requestWeeklyPlanApproval({
-    householdId: demoFamilyContext.household.id,
-    requestedByMemberId: "member-parent-a",
-    entries: weeklyPlan.entries,
-    requestedAt: "2026-08-01T21:40:00.000Z",
-  });
+  const requested = requestMealPlanApproval(
+    demoFamilyContext.household.id,
+    weeklyPlan.entries,
+    "member-parent-a",
+    "2026-08-01T21:40:00.000Z",
+  );
 
-  const approval = approveWeeklyPlan({
-    request: approvalRequest,
-    decidedByMemberId: "member-parent-a",
-    decidedAt: "2026-08-01T21:41:00.000Z",
-    reason: "Familienplan geprüft und freigegeben.",
-  });
+  const approval = decideMealPlanApproval(
+    requested.approval,
+    requested.entries,
+    "approved",
+    "member-parent-a",
+    "2026-08-01T21:41:00.000Z",
+    "Familienplan geprüft und freigegeben.",
+  );
 
   const approvedMeal = approval.entries[0];
   const compilation = compileThermomixRecipe({
@@ -56,13 +62,15 @@ export const runDemoFamilyScenario = () => {
     return { weeklyPlan, approval, compilation, session: undefined };
   }
 
-  const plannedSession = createCookingSession({
+  const plannedSession: CookingSession = {
     id: "session-demo-soup",
     householdId: demoFamilyContext.household.id,
     mealPlanEntryId: approvedMeal.id,
     model: "TM6",
+    status: "planned",
+    currentStep: 0,
     steps: compilation.steps,
-  });
+  };
 
   const session = startCookingSession(
     plannedSession,
