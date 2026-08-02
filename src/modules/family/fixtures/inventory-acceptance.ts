@@ -12,6 +12,9 @@ export const runInventoryAcceptance = () => {
   const water = scenario.afterCooking.items.find(
     (item) => item.ingredientId === "water",
   );
+  const selectedAssessment = scenario.plan.assessments.find(
+    (assessment) => assessment.candidateId === scenario.plan.entry?.recipeId,
+  );
 
   return {
     inventoryValid: validateInventory(demoInventory).length === 0,
@@ -23,7 +26,9 @@ export const runInventoryAcceptance = () => {
       scenario.expiringIngredientIds[0] === "zucchini",
     planningUsesInventory:
       scenario.plan.entry !== undefined &&
-      scenario.plan.shoppingList.length > 0,
+      selectedAssessment?.reasons.some((reason) =>
+        reason.includes("ingredient(s) must be purchased"),
+      ) === true,
     consumptionApplied:
       carrot?.quantity === 200 &&
       zucchini?.quantity === 50 &&
