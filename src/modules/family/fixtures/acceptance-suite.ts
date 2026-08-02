@@ -1,6 +1,7 @@
 import { assertFamilyAcceptance } from "./acceptance";
 import { assertCalendarAcceptance } from "./calendar-acceptance";
 import { assertChoreAcceptance } from "./chore-acceptance";
+import { assertInventoryAcceptance } from "./inventory-acceptance";
 import { assertKidsKitchenAcceptance } from "./kids-kitchen-acceptance";
 import { assertLearningAcceptance } from "./learning-acceptance";
 import { assertLeftoverAcceptance } from "./leftover-acceptance";
@@ -15,6 +16,7 @@ export interface AcceptanceSuiteResult {
 
 const SUITES: Array<{ name: string; run: () => void }> = [
   { name: "family-vertical-slice", run: assertFamilyAcceptance },
+  { name: "inventory", run: assertInventoryAcceptance },
   { name: "learning", run: assertLearningAcceptance },
   { name: "calendar", run: assertCalendarAcceptance },
   { name: "shopping-budget", run: assertShoppingBudgetAcceptance },
