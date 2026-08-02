@@ -1,0 +1,170 @@
+name: Phoenix Approval Run
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created, edited]
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Pull request number
+        required: true
+        type: number
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: phoenix-approval-${{ github.event.pull_request.number || github.event.issue.number || inputs.pull_request }}
+  cancel-in-progress: true
+
+jobs:
+  approval:
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request && startsWith(github.event.comment.body, '/phoenix-approve ')) ||
+      (github.event.issue.pull_request && github.event.comment.body == '/phoenix-status')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate approval chain
+        uses: actions/github-script@v7
+        env:
+          DEATH_STAR_ACTORS: ${{ vars.PHOENIX_DEATH_STAR_ACTORS }}
+          DARTH_VADER_ACTORS: ${{ vars.PHOENIX_DARTH_VADER_ACTORS }}
+          PHOENIX_EO_ACTORS: ${{ vars.PHOENIX_EO_ACTORS }}
+          AUTO_MERGE: ${{ vars.PHOENIX_AUTO_MERGE }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = Number(
+              context.payload.pull_request?.number ||
+              context.payload.issue?.number ||
+              '${{ inputs.pull_request }}'
+            );
+
+            if (!prNumber) core.setFailed('Pull request number is required.');
+
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            const headSha = pr.head.sha;
+
+            const parseActors = (value) => new Set(
+              String(value || '').split(',').map((actor) => actor.trim()).filter(Boolean)
+            );
+            const authorized = {
+              'death-star': parseActors(process.env.DEATH_STAR_ACTORS),
+              'darth-vader': parseActors(process.env.DARTH_VADER_ACTORS),
+              'phoenix-executive-office': parseActors(process.env.PHOENIX_EO_ACTORS),
+            };
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+
+            const commands = comments
+              .map((comment) => {
+                const match = comment.body?.trim().match(
+                  /^\/phoenix-approve (death-star|darth-vader|phoenix-executive-office) sha:([0-9a-f]{40})$/
+                );
+                return match ? {
+                  gate: match[1],
+                  sha: match[2],
+                  actor: comment.user.login,
+                  at: comment.updated_at,
+                  url: comment.html_url,
+                } : null;
+              })
+              .filter(Boolean)
+              .sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+
+            const gateResult = (gate) => {
+              const current = commands.find((command) => command.gate === gate);
+              if (!current) return { status: 'missing', detail: 'No approval command found.' };
+              if (current.sha !== headSha) return { status: 'stale', detail: `Approval targets ${current.sha}.` };
+              if (!authorized[gate].has(current.actor)) {
+                return { status: 'unauthorized', detail: `${current.actor} is not authorized.` };
+              }
+              return { status: 'passed', actor: current.actor, detail: current.url };
+            };
+
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner, repo, event: 'pull_request', per_page: 100,
+            });
+            const technicalRun = runs.find((run) =>
+              run.name === 'Phoenix Family' && run.head_sha === headSha && run.status === 'completed'
+            );
+            const technical = technicalRun?.conclusion === 'success'
+              ? { status: 'passed', detail: technicalRun.html_url }
+              : { status: technicalRun ? 'rejected' : 'missing', detail: technicalRun?.html_url || 'No completed Phoenix Family run found.' };
+
+            const query = `query($owner:String!, $repo:String!, $number:Int!) {
+              repository(owner:$owner, name:$repo) {
+                pullRequest(number:$number) {
+                  reviewThreads(first:100) { nodes { isResolved } }
+                }
+              }
+            }`;
+            const threadData = await github.graphql(query, { owner, repo, number: prNumber });
+            const openThreads = threadData.repository.pullRequest.reviewThreads.nodes
+              .filter((thread) => !thread.isResolved).length;
+
+            const results = {
+              technical,
+              'death-star': gateResult('death-star'),
+              'darth-vader': gateResult('darth-vader'),
+              'phoenix-executive-office': gateResult('phoenix-executive-office'),
+            };
+            const allPassed = Object.values(results).every((result) => result.status === 'passed');
+            const authorizedToMerge = allPassed && openThreads === 0 && !pr.draft && pr.mergeable !== false;
+
+            const row = (name, result) => `| ${name} | ${result.status.toUpperCase()} | ${result.actor || ''} | ${result.detail} |`;
+            const body = [
+              '<!-- phoenix-approval-report -->',
+              '## Phoenix automated approval report',
+              '',
+              `Head SHA: \`${headSha}\``,
+              '',
+              '| Gate | Status | Actor | Evidence |',
+              '|---|---|---|---|',
+              row('Technical', results.technical),
+              row('Death Star', results['death-star']),
+              row('Darth Vader', results['darth-vader']),
+              row('Phoenix Executive Office', results['phoenix-executive-office']),
+              '',
+              `Open review threads: **${openThreads}**`,
+              `Draft: **${pr.draft ? 'yes' : 'no'}**`,
+              `Merge authorization: **${authorizedToMerge ? 'GRANTED' : 'DENIED'}**`,
+              '',
+              'Approval command format:',
+              `\`/phoenix-approve <gate> sha:${headSha}\``,
+            ].join('\n');
+
+            const existing = comments.find((comment) => comment.body?.includes('<!-- phoenix-approval-report -->'));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+            }
+
+            await core.summary.addRaw(body).write();
+
+            if (!authorizedToMerge) {
+              core.setFailed('Phoenix merge authorization denied.');
+              return;
+            }
+
+            if (String(process.env.AUTO_MERGE).toLowerCase() === 'true') {
+              await github.rest.pulls.merge({
+                owner,
+                repo,
+                pull_number: prNumber,
+                merge_method: 'squash',
+                sha: headSha,
+              });
+            }
