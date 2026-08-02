@@ -4,19 +4,23 @@ on:
   pull_request:
     paths:
       - "src/modules/family/**"
+      - "src/platform/governance/**"
       - "docs/modules/family/**"
       - "package.json"
       - "tsconfig.json"
       - ".github/workflows/phoenix-family.yml"
+      - ".github/workflows/phoenix-approval-run.yml"
   push:
     branches:
       - main
     paths:
       - "src/modules/family/**"
+      - "src/platform/governance/**"
       - "docs/modules/family/**"
       - "package.json"
       - "tsconfig.json"
       - ".github/workflows/phoenix-family.yml"
+      - ".github/workflows/phoenix-approval-run.yml"
 
 jobs:
   acceptance:
