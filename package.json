@@ -1,0 +1,16 @@
+{
+  "name": "phoenix",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "acceptance:family": "tsx src/modules/family/fixtures/run-acceptance-suite.ts",
+    "test": "npm run typecheck && npm run acceptance:family"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  }
+}
