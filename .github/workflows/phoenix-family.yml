@@ -1,0 +1,40 @@
+name: Phoenix Family
+
+on:
+  pull_request:
+    paths:
+      - "src/modules/family/**"
+      - "docs/modules/family/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/phoenix-family.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/modules/family/**"
+      - "docs/modules/family/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/phoenix-family.yml"
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck and acceptance
+        run: npm test
