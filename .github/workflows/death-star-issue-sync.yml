@@ -1,0 +1,123 @@
+name: Death Star Issue Sync
+
+on:
+  issues:
+    types: [opened, edited, reopened, labeled, unlabeled, assigned, unassigned, closed]
+  issue_comment:
+    types: [created]
+  workflow_run:
+    workflows: ["Phoenix Family"]
+    types: [completed]
+  repository_dispatch:
+    types: [death_star_instruction]
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  DEATH_STAR_REPO: thomascatulli-1976/signal-decisions-enterprise-platform
+  OS_ID: PHOENIX
+  MIRROR_MARKER: "<!-- death-star-sync -->"
+
+jobs:
+  send-to-death-star:
+    if: >-
+      github.event_name != 'repository_dispatch' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'failure') &&
+      (github.event_name != 'issue_comment' || !contains(github.event.comment.body, '<!-- death-star-sync -->'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and dispatch event
+        env:
+          TOKEN: ${{ secrets.DEATH_STAR_SYNC_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_STATE: ${{ github.event.issue.state }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test -n "${TOKEN:-}" || { echo "DEATH_STAR_SYNC_TOKEN is missing"; exit 1; }
+
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            correlation="${REPOSITORY}:workflow:${RUN_ID}"
+            event_type="ci_failure"
+            title="CI failure: ${RUN_NAME} in ${REPOSITORY}"
+            body="Workflow ${RUN_NAME} failed. Run: ${RUN_URL}; commit: ${RUN_SHA}."
+            source_number=""
+            source_event_id="workflow-run:${RUN_ID}"
+          else
+            correlation="${REPOSITORY}:issue:${ISSUE_NUMBER}"
+            event_type="issue_${EVENT_ACTION}"
+            title="${ISSUE_TITLE}"
+            source_number="${ISSUE_NUMBER}"
+            if [ "$EVENT_NAME" = "issue_comment" ]; then
+              body="${COMMENT_BODY}"
+              source_event_id="comment:${COMMENT_ID}"
+            else
+              body="${ISSUE_BODY}"
+              source_event_id="issue:${ISSUE_NUMBER}:${EVENT_ACTION}:${GITHUB_RUN_ID}"
+            fi
+          fi
+
+          payload=$(jq -n \
+            --arg os_id "$OS_ID" \
+            --arg source_repo "$REPOSITORY" \
+            --arg source_issue "$source_number" \
+            --arg correlation_id "$correlation" \
+            --arg event_type "$event_type" \
+            --arg source_event_id "$source_event_id" \
+            --arg title "$title" \
+            --arg body "$body" \
+            --arg state "${ISSUE_STATE:-open}" \
+            '{event_type:"os_issue_event", client_payload:{os_id:$os_id,source_repo:$source_repo,source_issue:$source_issue,correlation_id:$correlation_id,event_type:$event_type,source_event_id:$source_event_id,title:$title,body:$body,state:$state}}')
+
+          curl --fail-with-body -sS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${DEATH_STAR_REPO}/dispatches" \
+            -d "$payload"
+
+  receive-from-death-star:
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply Death Star instruction to source issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_ISSUE: ${{ github.event.client_payload.source_issue }}
+          CORRELATION_ID: ${{ github.event.client_payload.correlation_id }}
+          MESSAGE: ${{ github.event.client_payload.message }}
+          DEATH_STAR_ISSUE_URL: ${{ github.event.client_payload.death_star_issue_url }}
+          TARGET_STATE: ${{ github.event.client_payload.target_state }}
+        run: |
+          set -euo pipefail
+          test -n "${SOURCE_ISSUE:-}" || { echo "No source issue supplied; nothing to update"; exit 0; }
+          comment=$(cat <<EOF
+          ${MIRROR_MARKER}
+          ## Death Star Update
+
+          ${MESSAGE}
+
+          **Correlation ID:** \`${CORRELATION_ID}\`  
+          **Death Star record:** ${DEATH_STAR_ISSUE_URL}
+          EOF
+          )
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${SOURCE_ISSUE}/comments" -f body="$comment"
+
+          if [ "${TARGET_STATE:-}" = "closed" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/${SOURCE_ISSUE}" -f state=closed
+          elif [ "${TARGET_STATE:-}" = "open" ]; then
+            gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/${SOURCE_ISSUE}" -f state=open
+          fi
