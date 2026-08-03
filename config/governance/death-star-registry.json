@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "updated_for_issue": 5,
+  "parent_system": "Death Star Enterprise OS",
+  "domains": [
+    {
+      "id": "PHOENIX",
+      "type": "ARCHITECTURE_DOMAIN",
+      "capability_type": "CAPABILITY_SYSTEM",
+      "status": "ACTIVE",
+      "executive_operator": "Billy",
+      "routing": ["Death Star", "Billy", "PHOENIX"]
+    }
+  ],
+  "agents": [
+    {
+      "id": "Billy",
+      "type": "EXECUTIVE_OPERATOR",
+      "assignment": "PHOENIX",
+      "status": "ACTIVE",
+      "authority": ["OPERATIONAL_EXECUTION", "MONITORING", "LIFECYCLE_CONTROL"]
+    },
+    {
+      "id": "Boba Fett",
+      "type": "CONTROL_AGENT",
+      "status": "ACTIVE",
+      "control_domain": "OWNERSHIP_ROUTING_GOVERNANCE",
+      "trigger_mode": "AUTOMATIC",
+      "actions": ["STOP_INVALID_ROUTING", "RESTORE_OWNER", "RECORD_INCIDENT", "VALIDATE_REMEDIATION"]
+    }
+  ],
+  "initiatives": [
+    {
+      "id": "Personal AI Work OS",
+      "capability": "Individual AI Enablement",
+      "architecture_owner": "PHOENIX",
+      "executive_operator": "Billy",
+      "monitoring_owner": "Billy",
+      "control_agent": "Boba Fett",
+      "status": "INITIATION APPROVED",
+      "lifecycle": "DESIGN",
+      "human_approval": "MANDATORY"
+    }
+  ],
+  "controls": {
+    "block_phoenix_bypass": true,
+    "require_control_agent_on_bypass": true,
+    "github_sync_channel": "thomascatulli-1976/phoenix",
+    "check_repository_before_sync_unavailable": true
+  }
+}
