@@ -47,7 +47,24 @@ jobs:
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          test -n "${TOKEN:-}" || { echo "DEATH_STAR_SYNC_TOKEN is missing"; exit 1; }
+
+          if [ -z "${TOKEN:-}" ]; then
+            cat <<'EOF'
+          Required repository secret missing:
+
+          DEATH_STAR_SYNC_TOKEN
+
+          Create it under:
+
+          Settings
+          -> Secrets and variables
+          -> Actions
+
+          See:
+          docs/architecture/github-secrets.md
+          EOF
+            exit 1
+          fi
 
           if [ "$EVENT_NAME" = "workflow_run" ]; then
             correlation="${REPOSITORY}:workflow:${RUN_ID}"
