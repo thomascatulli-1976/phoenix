@@ -31,6 +31,22 @@ No production execution, live trading, broker credentials, or uncontrolled exter
 - `tests/` verification tests
 - `.github/workflows/` CI controls
 
+## GitHub Actions Setup
+
+The Death Star issue synchronization workflow requires the repository secret:
+
+```text
+DEATH_STAR_SYNC_TOKEN
+```
+
+Create the secret administratively in GitHub under:
+
+**Settings -> Secrets and variables -> Actions**
+
+The workflow must reference only `secrets.DEATH_STAR_SYNC_TOKEN`. Do not use alternate secret names, hardcoded credentials, or repository-specific synchronization tokens.
+
+The credential itself is provisioned and maintained outside this repository. See [`docs/architecture/github-secrets.md`](docs/architecture/github-secrets.md) for the enterprise standard, responsibilities, and onboarding guidance.
+
 ## Source-of-truth rule
 
 Google Drive remains the canonical enterprise architecture and governance repository. Executable source, tests, build configuration and CI evidence live in GitHub. Any architecture-relevant change must remain traceable to an approved Drive artifact.
