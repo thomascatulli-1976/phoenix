@@ -6,10 +6,7 @@ import {
 } from "./model.js";
 
 const scored = (
-  base: Omit<
-    AccountabilityRecord,
-    "healthScore" | "executiveContributionScore"
-  >,
+  base: Omit<AccountabilityRecord, "healthScore" | "executiveContributionScore">,
 ): AccountabilityRecord => ({
   ...base,
   healthScore: calculateHealthScore(base.scoreInputs),
@@ -89,8 +86,8 @@ export const validAllClearRecord = scored({
   evidence: [
     {
       kind: "REVIEW",
-      uri: "github://thomascatulli-1976/phoenix/issues/8",
-      label: "Security monitoring evidence",
+      uri: "fixture://security-review/all-clear-001",
+      label: "Synthetic acceptance fixture only",
     },
   ],
   scoreInputs: monitoring,
@@ -130,4 +127,34 @@ export const invalidSilentActiveRecord: AccountabilityRecord = {
   ...validActiveRecord,
   actorId: "AGENT-SILENT",
   actionsCompleted: [],
+};
+
+export const invalidScoreRangeRecord: AccountabilityRecord = {
+  ...validActiveRecord,
+  actorId: "AGENT-RANGE",
+  scoreInputs: { ...validActiveRecord.scoreInputs, impact: 140 },
+};
+
+export const invalidAllClearWithoutEvidence: AccountabilityRecord = {
+  ...validAllClearRecord,
+  actorId: "AGENT-ALL-CLEAR-NO-EVIDENCE",
+  evidence: [],
+};
+
+export const invalidNoEvidenceFlags: AccountabilityRecord = {
+  ...validNoEvidenceRecord,
+  actorId: "AGENT-NO-EVIDENCE-FLAG",
+  flags: { ...validNoEvidenceRecord.flags, missingEvidence: false },
+};
+
+export const invalidArchivedActiveRecord: AccountabilityRecord = {
+  ...validActiveRecord,
+  actorId: "AGENT-ARCHIVED-ACTIVE",
+  lifecycle: "ARCHIVED",
+};
+
+export const invalidScoreMismatchRecord: AccountabilityRecord = {
+  ...validActiveRecord,
+  actorId: "AGENT-SCORE-MISMATCH",
+  healthScore: validActiveRecord.healthScore - 1,
 };
