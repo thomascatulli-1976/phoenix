@@ -10,6 +10,8 @@ export interface ValidationResult {
   warnings: string[];
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 export function validateAccountabilityRecord(
   record: AccountabilityRecord,
 ): ValidationResult {
@@ -19,8 +21,20 @@ export function validateAccountabilityRecord(
   if (!record.actorId.trim()) errors.push("actorId is required");
   if (!record.role.trim()) errors.push("role is required");
   if (!record.mission.trim()) errors.push("mission is required");
-  if (!record.cycleDate.trim()) errors.push("cycleDate is required");
-  if (!record.timezone.trim()) errors.push("timezone is required");
+  if (!ISO_DATE.test(record.cycleDate)) errors.push("cycleDate must use YYYY-MM-DD");
+  if (!record.timezone.trim() || !record.timezone.includes("/")) {
+    errors.push("timezone must be a non-empty IANA-style identifier");
+  }
+
+  for (const [name, value] of Object.entries(record.scoreInputs)) {
+    if (!Number.isFinite(value) || value < 0 || value > 100) {
+      errors.push(`scoreInputs.${name} must be a finite number between 0 and 100`);
+    }
+  }
+
+  for (const evidence of record.evidence) {
+    if (!evidence.uri.trim()) errors.push("evidence URI must not be empty");
+  }
 
   const expectedHealth = calculateHealthScore(record.scoreInputs);
   const expectedContribution = calculateContributionScore(record.scoreInputs);
