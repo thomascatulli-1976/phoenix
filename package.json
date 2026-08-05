@@ -6,7 +6,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "acceptance:family": "tsx src/modules/family/fixtures/run-acceptance-suite.ts",
-    "test": "npm run typecheck && npm run acceptance:family"
+    "acceptance:accountability": "tsx src/runtime/accountability/run-acceptance-suite.ts",
+    "test": "npm run typecheck && npm run acceptance:family && npm run acceptance:accountability"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",
