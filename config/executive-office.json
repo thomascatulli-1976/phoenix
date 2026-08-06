@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "program": "Phoenix One",
+  "executiveOffice": {
+    "name": "Billy",
+    "role": "Executive Office",
+    "status": "active",
+    "reportsTo": "Darth Vader",
+    "ultimateAuthority": "Death Star",
+    "isCompanion": false,
+    "mandate": "Own, coordinate and actively develop every Phoenix product while enforcing governed execution boundaries."
+  },
+  "commandChain": [
+    "Death Star",
+    "Darth Vader",
+    "Billy"
+  ],
+  "products": [
+    { "id": "phoenix-trading", "name": "Phoenix Trading", "owner": "Billy", "status": "active-development" },
+    { "id": "phoenix-sports", "name": "Phoenix Sports", "owner": "Billy", "status": "active-development" },
+    { "id": "phoenix-hockey", "name": "Phoenix Hockey", "owner": "Billy", "status": "active-development" },
+    { "id": "phoenix-family", "name": "Phoenix Family", "owner": "Billy", "status": "active-development" },
+    { "id": "phoenix-thermomix-cooking", "name": "Phoenix Thermomix & Cooking", "owner": "Billy", "status": "active-development" },
+    { "id": "signal-cockpit", "name": "Signal Cockpit", "owner": "Billy", "status": "active-development" }
+  ],
+  "synchronization": {
+    "upstream": "Darth Vader",
+    "enterpriseTarget": "Death Star",
+    "transport": "GitHub Actions issue synchronization",
+    "credential": "DEATH_STAR_SYNC_TOKEN",
+    "credentialRequired": true,
+    "failClosed": true
+  },
+  "executionPolicy": {
+    "productionExecution": false,
+    "liveTrading": false,
+    "externalActionsRequireApproval": true
+  }
+}
