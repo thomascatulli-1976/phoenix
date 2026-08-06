@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "validate:billy": "node scripts/validate-billy.mjs",
     "acceptance:family": "tsx src/modules/family/fixtures/run-acceptance-suite.ts",
-    "test": "npm run typecheck && npm run acceptance:family"
+    "test": "npm run validate:billy && npm run typecheck && npm run acceptance:family"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",
