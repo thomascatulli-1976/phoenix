@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0",
+  "executiveOffice": "Billy",
+  "reportsTo": "Darth Vader",
+  "program": "Phoenix One",
+  "status": "active-development",
+  "updatedAt": "2026-08-06",
+  "workstreams": [
+    {
+      "id": "phoenix-trading",
+      "name": "Phoenix Trading",
+      "owner": "Billy",
+      "status": "active-development",
+      "nextDeliverable": "Define governed decision-to-action architecture with paper-trading adapter and approval gates",
+      "blockers": ["Broker/API provider not selected", "Live execution approval not granted"],
+      "externalExecution": "disabled"
+    },
+    {
+      "id": "phoenix-sports",
+      "name": "Phoenix Sports",
+      "owner": "Billy",
+      "status": "active-development",
+      "nextDeliverable": "Create canonical sports event, odds and recommendation contracts",
+      "blockers": ["Data provider selection pending", "Bet placement remains prohibited"],
+      "externalExecution": "disabled"
+    },
+    {
+      "id": "phoenix-hockey",
+      "name": "Phoenix Hockey",
+      "owner": "Billy",
+      "status": "active-development",
+      "nextDeliverable": "Build hockey-specific game, player and signal schema on Phoenix Sports contracts",
+      "blockers": ["League coverage priorities not finalized"],
+      "externalExecution": "disabled"
+    },
+    {
+      "id": "phoenix-family",
+      "name": "Phoenix Family",
+      "owner": "Billy",
+      "status": "active-development",
+      "nextDeliverable": "Define household profiles, permissions and family workflow boundaries",
+      "blockers": ["Privacy and household-role rules require approval"],
+      "externalExecution": "disabled"
+    },
+    {
+      "id": "phoenix-thermomix-cooking",
+      "name": "Phoenix Thermomix & Cooking",
+      "owner": "Billy",
+      "status": "active-development",
+      "nextDeliverable": "Create recipe, pantry, meal-plan and appliance-action contracts",
+      "blockers": ["Thermomix integration surface not confirmed"],
+      "externalExecution": "disabled"
+    },
+    {
+      "id": "signal-cockpit",
+      "name": "Signal Cockpit",
+      "owner": "Billy",
+      "status": "active-development",
+      "nextDeliverable": "Define executive status aggregation contract across all Phoenix workstreams",
+      "blockers": ["Cross-module status event contract pending"],
+      "externalExecution": "disabled"
+    }
+  ],
+  "definitionOfActive": {
+    "ownerAssigned": true,
+    "nextDeliverableRequired": true,
+    "blockersVisible": true,
+    "evidenceRequired": true,
+    "consequentialActionsFailClosed": true
+  }
+}
