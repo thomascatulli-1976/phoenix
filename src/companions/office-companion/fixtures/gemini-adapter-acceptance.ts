@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { GeminiOfficeAdapter } from "../adapters/gemini-adapter.js";
 import type { OfficeTaskRequest } from "../contracts.js";
+import { createOfficeRuntimeProviderState } from "../runtime-providers.js";
 import { createOfficeCompanionServer } from "../server.js";
 
 interface JsonRecord {
@@ -130,9 +131,31 @@ export async function runGeminiAdapterAcceptance(): Promise<void> {
   const unconfigured = new GeminiOfficeAdapter({ apiKey: "", model: "" });
   assert.equal(await unconfigured.isAvailable(), false);
 
+  const implicitActivation = createOfficeRuntimeProviderState({
+    environment: {
+      GEMINI_API_KEY: "test-gemini-secret",
+      GEMINI_MODEL: "gemini-test-model",
+    },
+  });
+  assert.deepEqual(implicitActivation.operationalProviderIds, []);
+  assert.equal(
+    implicitActivation.failures.some((failure) =>
+      failure.includes("OFFICE_COMPANION_ENABLE_LIVE_PROVIDER is not true"),
+    ),
+    true,
+  );
+
+  const invalidEnablement = createOfficeRuntimeProviderState({
+    environment: {
+      OFFICE_COMPANION_ENABLE_LIVE_PROVIDER: "yes",
+    },
+  });
+  assert.equal(invalidEnablement.failures.length, 1);
+
   const mock = createGeminiMock();
   const server = createOfficeCompanionServer({
     environment: {
+      OFFICE_COMPANION_ENABLE_LIVE_PROVIDER: "true",
       GEMINI_API_KEY: "test-gemini-secret",
       GEMINI_MODEL: "gemini-test-model",
       GEMINI_API_BASE_URL: "https://gemini.example.test/v1beta",

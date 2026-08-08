@@ -33,15 +33,31 @@ The Office Companion is a stateless HTTP service in a portable container image.
 | `GET /health` | Process liveness |
 | `GET /ready` | Governance, runtime and provider readiness |
 | `POST /v1/route` | Policy-first provider selection without execution |
-| `POST /v1/complete` | Credential-gated provider execution and Microsoft-ready packaging |
+| `POST /v1/complete` | Explicitly enabled, credential-gated provider execution and Microsoft-ready packaging |
 
 The completion endpoint never publishes to Microsoft 365. It returns a `Draft / Review Candidate` with `validationState: unvalidated`, `humanReviewRequired: true` and `autonomousPublication: false`.
 
 ## Gemini reference adapter
 
-The Gemini adapter:
+The Gemini adapter becomes operational only when all three required deployment variables are present:
 
-- activates only when both `GEMINI_API_KEY` and `GEMINI_MODEL` are present;
+```text
+OFFICE_COMPANION_ENABLE_LIVE_PROVIDER=true
+GEMINI_API_KEY=<deployment secret>
+GEMINI_MODEL=<approved model identifier>
+```
+
+Optional variables:
+
+```text
+GEMINI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+GEMINI_TIMEOUT_MS=60000
+```
+
+Key and model values without the exact explicit enable flag cause a fail-closed readiness error. This prevents accidental provider activation merely because credentials exist in an environment.
+
+The adapter:
+
 - sends the credential only in the provider authentication header;
 - requests JSON structured output using the Phoenix decision-memo schema;
 - normalizes provider output into the universal Office Companion response contract;
@@ -49,35 +65,13 @@ The Gemini adapter:
 - does not log or persist the credential;
 - does not make Gemini the permanent default provider.
 
-Runtime configuration:
-
-```text
-GEMINI_API_KEY=<deployment secret>
-GEMINI_MODEL=<approved model identifier>
-GEMINI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta
-GEMINI_TIMEOUT_MS=60000
-```
-
-Real values belong only in a local untracked environment file or an approved deployment secret store. The repository contains `.env.example` with an empty credential field.
+Real values belong only in a local untracked environment file or an approved deployment secret store. The repository contains `.env.example` with live execution disabled and an empty credential field.
 
 ## Controlled output workflow
 
-The first end-to-end workflow produces a Microsoft-ready decision memo package containing:
+The first end-to-end workflow produces a Microsoft-ready decision memo package containing artifact identity, draft status, decision requirement, management summary, options, recommendation, rationale, assumptions, open points, validation requirements, evidence status, excluded information, provider metadata and non-publication controls.
 
-- artifact title and type;
-- draft/review status;
-- target system;
-- decision requirement;
-- management summary;
-- options, recommendation and rationale;
-- assumptions and open points;
-- internal validation requirements;
-- source/evidence status;
-- excluded information;
-- provider and trace metadata;
-- explicit human-review and non-publication controls.
-
-The provider generates only the draft content. Phoenix adds governance fields such as owner placeholder, sensitivity, validation state, target system and publication boundary.
+The provider generates only draft content. Phoenix adds governance fields such as owner placeholder, sensitivity, validation state, target system and publication boundary.
 
 ## Data gate
 
@@ -91,7 +85,7 @@ A provider credential never grants permission to process data.
 
 ## Provider policy
 
-- Gemini: registered, reference adapter implemented, operational only when configured
+- Gemini: registered, reference adapter implemented, operational only after explicit enablement plus approved configuration
 - Claude: registered, adapter planned
 - ChatGPT: registered, adapter planned
 - permanent default: none
@@ -117,7 +111,7 @@ npm run build:office
 npm test
 ```
 
-The Gemini acceptance test uses a deterministic local mock. It checks authentication-header handling, structured-output configuration, RED-data rejection, human-review enforcement and Microsoft-ready packaging without calling a live provider or requiring a real secret.
+The Gemini acceptance test uses a deterministic local mock. It checks explicit activation, authentication-header handling, structured-output configuration, RED-data rejection, human-review enforcement and Microsoft-ready packaging without calling a live provider or requiring a real secret.
 
 Run without a provider credential:
 
@@ -132,7 +126,8 @@ Run a credential-gated local proof:
 
 ```text
 cp .env.example .env
-# Populate GEMINI_API_KEY and GEMINI_MODEL locally, then export the variables.
+# Set OFFICE_COMPANION_ENABLE_LIVE_PROVIDER=true.
+# Add GEMINI_API_KEY and GEMINI_MODEL locally, then export the variables.
 npm run build:office
 npm run start:office
 ```
@@ -149,15 +144,6 @@ No `.env` file may be committed.
 
 ## Current gate
 
-The reference-adapter gate passes when:
+The reference-adapter gate requires Billy ownership, all four Drive artifacts, canonical provider order, no permanent default, explicit live enablement, deployment-only credentials, pre-execution Data Gate enforcement, schema validation, Phoenix-owned governance metadata, mandatory human review and successful test/build/container evidence.
 
-- Billy ownership and all four Drive artifacts are traceable;
-- Gemini, Claude and ChatGPT remain registered in canonical order;
-- Gemini activates only through deployment configuration;
-- no permanent provider default is introduced;
-- RED and unsanitized YELLOW data are rejected before execution;
-- structured output is validated and normalized;
-- every output package remains unvalidated and human-reviewed;
-- unit, server, adapter, build and container gates pass without a live secret.
-
-The next delivery gate is one live sanitized Gemini staging proof using an approved deployment secret. After that, Claude and ChatGPT adapters can be implemented against the same contracts.
+The next delivery gate is one live sanitized Gemini staging proof using explicit enablement and an approved deployment secret. After that, Claude and ChatGPT adapters can be implemented against the same contracts.

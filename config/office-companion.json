@@ -50,6 +50,7 @@
         "status": "registered",
         "adapterState": "implemented-reference",
         "credentialRequired": true,
+        "enableEnvironmentVariable": "OFFICE_COMPANION_ENABLE_LIVE_PROVIDER",
         "credentialEnvironmentVariable": "GEMINI_API_KEY",
         "modelEnvironmentVariable": "GEMINI_MODEL",
         "allowedDataClasses": ["green", "yellow-sanitized"]
@@ -78,7 +79,7 @@
     "ciRuntime": "github-actions",
     "firstProductionTarget": "azure-container-apps",
     "portableContainerRuntime": true,
-    "liveProviderExecution": "credential-gated",
+    "liveProviderExecution": "credential-and-explicit-enable-gated",
     "foundationEndpoints": [
       "GET /health",
       "GET /ready",
@@ -111,5 +112,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "Run the first live sanitized Gemini staging proof with an approved deployment secret, then implement Claude and ChatGPT adapters without changing the provider-neutral core."
+  "nextDeliverable": "Run the first live sanitized Gemini staging proof with explicit enablement and an approved deployment secret, then implement Claude and ChatGPT adapters without changing the provider-neutral core."
 }

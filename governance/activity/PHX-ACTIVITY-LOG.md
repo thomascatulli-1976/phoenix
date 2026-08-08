@@ -12,6 +12,16 @@ Every material PHOENIX OS activity must record date/time, owner or agent, activi
 
 ## Entries
 
+### 2026-08-08 — Office Companion explicit live-provider gate aligned
+- **Owner / Agent:** Billy / PHOENIX Executive Office
+- **Activity:** Reconciled the Gemini runtime implementation with `PHX-COMP-OFFICE-004` by requiring an explicit live-provider enable flag in addition to credential and model configuration.
+- **Affected artifacts / systems:** `src/companions/office-companion/runtime-providers.ts`; `.env.example`; `config/office-companion.json`; Gemini adapter acceptance; Office Companion governance validation; branch `fix/office-companion-explicit-live-enable`.
+- **Result / Status:** CORRECTIVE CONTROL — IN REVIEW. Credentials and model configuration alone can no longer activate Gemini. The runtime requires `OFFICE_COMPANION_ENABLE_LIVE_PROVIDER=true` and fails closed on ambiguous or conflicting configuration.
+- **Decision:** Provider activation requires explicit operator intent, approved credentials and model configuration. This control applies before the first live staging proof.
+- **Open points:** CI and merge remain outstanding. A real staging credential and Azure deployment are still not provisioned.
+- **Errors / Blockers:** None in the design; the correction closes a detected Drive-to-code governance mismatch.
+- **Next step:** Pass CI, merge the corrective control and retain the live staging proof as the next gated activity.
+
 ### 2026-08-08 — Phoenix Office Companion Gemini reference adapter initiated
 - **Owner / Agent:** Billy / PHOENIX Executive Office
 - **Activity:** Created the Gemini reference adapter, credential-gated runtime activation, controlled completion endpoint and Microsoft-ready decision-memo workflow.
