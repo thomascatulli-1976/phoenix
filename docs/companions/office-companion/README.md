@@ -1,6 +1,6 @@
 # Phoenix Office Companion
 
-**Status:** Active development — foundation  
+**Status:** Active development — runtime foundation  
 **Executive Office:** Billy  
 **Parent product:** Phoenix One  
 **Parent runtime:** Phoenix Companion Runtime  
@@ -19,18 +19,44 @@ Drive remains authoritative for approved business, governance and architecture s
 
 - `PHX-COMP-OFFICE-001` — Phoenix Office Companion System Definition v1.0
 - `PHX-COMP-OFFICE-002` — Provider-Neutral Runtime and Routing Architecture v1.0
+- `PHX-COMP-OFFICE-003` — Runtime Hosting and MVP Deployment Decision v1.0
 
-GitHub remains authoritative for executable implementation, configuration, tests and CI evidence.
+GitHub remains authoritative for executable implementation, configuration, tests, container definition and CI evidence.
+
+## Runtime decision
+
+The Office Companion runs as a stateless HTTP service inside a portable container image.
+
+- local development: Docker-compatible runtime
+- CI and acceptance: GitHub Actions
+- first governed production target: Azure Container Apps
+- portable core: no Azure SDK types in universal contracts
+- live provider execution: disabled during the server-foundation gate
+- production credentials: prohibited in source control and Drive specifications
+
+Azure is the first deployment target because the intended enterprise integration surface includes Microsoft Entra ID, Microsoft Graph, Azure Key Vault and Microsoft 365. The Office Companion core remains deployable on another approved container platform.
+
+## Foundation endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Process liveness |
+| `GET /ready` | Configuration, governance-anchor and provider-registry readiness |
+| `POST /v1/route` | Policy-first provider selection without a live model call |
+
+The routing endpoint validates the normalized task contract, rejects RED data, rejects unsanitized YELLOW data and fails closed when no registered provider is operational. No endpoint sends, publishes, approves or performs consequential external actions.
 
 ## Foundation structure
 
-- `config/office-companion.json` — machine-readable ownership, Drive anchors, provider registry and execution boundary
+- `config/office-companion.json` — ownership, Drive anchors, provider registry, hosting and execution boundary
 - `src/companions/office-companion/contracts.ts` — normalized request, response, evidence, tool and adapter contracts
 - `src/companions/office-companion/provider-registry.ts` — registered provider targets and controlled activation helper
 - `src/companions/office-companion/router.ts` — policy-first provider selection
-- `src/companions/office-companion/fixtures/` — acceptance tests
-- `scripts/validate-office-companion.mjs` — configuration and governance drift validation
-- `.github/workflows/office-companion.yml` — CI gate
+- `src/companions/office-companion/server.ts` — stateless HTTP runtime
+- `src/companions/office-companion/fixtures/` — routing acceptance and server smoke tests
+- `scripts/validate-office-companion.mjs` — governance, hosting and repository drift validation
+- `Dockerfile` — non-root, multi-stage runtime image
+- `.github/workflows/office-companion.yml` — CI and container gate
 
 ## Provider policy
 
@@ -54,7 +80,7 @@ Fallback is never silent. It must be permitted, policy-compliant, recorded and d
 
 | Class | Foundation behavior |
 |---|---|
-| GREEN | May be routed to an allowed provider |
+| GREEN | May be routed to an allowed and operational provider |
 | YELLOW | Requires minimization, anonymization, aggregation or abstraction before routing |
 | RED | Rejected for external provider routing by default |
 
@@ -68,31 +94,52 @@ A provider connection never grants permission to process data. Deployment policy
 - **VALIDATE** — check against approved evidence and internal records
 - **PUBLISH** — transfer reviewed outputs into the applicable system of record
 
-Material publication remains human-approved in the foundation stage.
+Material publication remains human-approved.
 
 ## Microsoft deployment boundary
 
 For a Microsoft deployment, Microsoft 365 remains the system of record for Outlook, Teams, SharePoint, OneDrive and approved Office artifacts. Microsoft 365 Copilot may be used for tenant-side retrieval and validation, but it is neither the universal reasoning core nor a hard dependency of the Office Companion.
 
+Microsoft Graph access is introduced only through a separately approved connector, tenant administration and explicit scopes.
+
 ## Development commands
 
 ```text
+npm install --no-audit --no-fund
 npm run validate:office
-npm run acceptance:office
 npm run typecheck
+npm run acceptance:office
+npm run smoke:office-server
+npm run build:office
 npm test
+```
+
+Run the compiled server:
+
+```text
+npm run build:office
+npm run start:office
+```
+
+Build and run the container:
+
+```text
+docker build -t phoenix-office-companion .
+docker run --rm -p 8080:8080 phoenix-office-companion
 ```
 
 ## Current gate
 
-The foundation gate requires:
+The runtime-foundation gate requires:
 
 - Billy ownership and correct Phoenix repository anchors;
-- the canonical Drive root, folder and artifact IDs;
+- all three canonical Drive artifacts;
 - Gemini, Claude and ChatGPT registered as equal first-class targets;
 - no permanent provider default;
 - fail-closed data and execution policies;
 - compile-safe provider-neutral contracts;
-- acceptance evidence for routing and data-gate behavior.
+- health, readiness and routing smoke evidence;
+- a successful non-root container build and health check;
+- no production credential or live model call.
 
-The next delivery gate is one sanitized end-to-end workflow using one approved provider adapter, explicit validation and a Microsoft-ready output package. The provider used for that proof does not become the permanent default.
+The next delivery gate is the Gemini reference adapter and one sanitized end-to-end workflow that creates a Microsoft-ready output package, requires human validation and does not establish Gemini as a permanent default.
