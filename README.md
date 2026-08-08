@@ -25,9 +25,17 @@ Billy owns coordinated active development for:
 
 The CI workflow [`billy-governance.yml`](.github/workflows/billy-governance.yml) verifies the appointment, command chain, product ownership, synchronization target and fail-closed execution policy.
 
+## Companion workstreams
+
+Billy is also the Executive Office for Phoenix companion workstreams. The first registered specialized workstream is:
+
+- **Phoenix Office Companion** — an LLM-independent office and knowledge-work companion with Gemini, Claude and ChatGPT as first-class provider targets.
+
+The Office Companion is not a separate top-level Phoenix product. It runs inside Phoenix One on the shared Phoenix Companion Runtime. Its technical entry point is [`docs/companions/office-companion/README.md`](docs/companions/office-companion/README.md), and its machine-readable configuration is [`config/office-companion.json`](config/office-companion.json).
+
 ## Current status
 
-Repository baseline initialized on 2026-07-25. Billy EO governance was implemented on 2026-08-06.
+Repository baseline initialized on 2026-07-25. Billy EO governance was implemented on 2026-08-06. The Office Companion foundation was initiated on 2026-08-08.
 
 This repository provides the controlled engineering skeleton for:
 
@@ -35,10 +43,11 @@ This repository provides the controlled engineering skeleton for:
 - PDOS integration
 - shared contracts
 - modules
+- companions
 - tests
 - CI
 
-No production execution, live trading, broker credentials, or uncontrolled external actions are permitted. Billy coordinates development and governance; consequential external execution requires separate approval, credentials, testing and audit evidence.
+No production execution, live trading, broker credentials, unrestricted enterprise-data transfer, or uncontrolled external actions are permitted. Billy coordinates development and governance; consequential external execution requires separate approval, credentials, testing and audit evidence.
 
 ## Repository structure
 
