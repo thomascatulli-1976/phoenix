@@ -12,6 +12,7 @@ on:
       - "tsconfig.build.json"
       - "Dockerfile"
       - ".dockerignore"
+      - ".env.example"
       - ".github/workflows/office-companion.yml"
   push:
     branches:
@@ -26,6 +27,7 @@ on:
       - "tsconfig.build.json"
       - "Dockerfile"
       - ".dockerignore"
+      - ".env.example"
       - ".github/workflows/office-companion.yml"
   workflow_dispatch:
 
@@ -33,7 +35,7 @@ permissions:
   contents: read
 
 jobs:
-  runtime-foundation-gate:
+  gemini-reference-adapter-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -49,17 +51,20 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate governance, anchors and hosting decision
+      - name: Validate governance, anchors and provider boundary
         run: npm run validate:office
 
       - name: Typecheck provider-neutral contracts and runtime
         run: npm run typecheck
 
-      - name: Run Office Companion routing acceptance suite
+      - name: Run provider-neutral routing acceptance suite
         run: npm run acceptance:office
 
       - name: Run stateless HTTP server smoke tests
         run: npm run smoke:office-server
+
+      - name: Run Gemini reference adapter acceptance with local mock
+        run: npm run acceptance:office-gemini
 
       - name: Build production runtime
         run: npm run build:office
@@ -67,7 +72,7 @@ jobs:
       - name: Build container image
         run: docker build -t phoenix-office-companion:ci .
 
-      - name: Smoke test container health and readiness
+      - name: Smoke test credential-free container
         shell: bash
         run: |
           set -eu
@@ -89,32 +94,72 @@ jobs:
           done
 
           node <<'NODE'
-          const response = await fetch('http://127.0.0.1:18080/ready');
-          const body = await response.json();
-          if (!response.ok) throw new Error(JSON.stringify(body));
-          if (body.status !== 'ready') throw new Error('Runtime did not report ready');
-          if (body.executiveOffice !== 'Billy') throw new Error('Billy ownership missing');
-          if (body.firstProductionTarget !== 'azure-container-apps') {
+          const readyResponse = await fetch('http://127.0.0.1:18080/ready');
+          const ready = await readyResponse.json();
+          if (!readyResponse.ok) throw new Error(JSON.stringify(ready));
+          if (ready.status !== 'ready') throw new Error('Runtime did not report ready');
+          if (ready.executiveOffice !== 'Billy') throw new Error('Billy ownership missing');
+          if (ready.firstProductionTarget !== 'azure-container-apps') {
             throw new Error('Azure Container Apps target missing');
           }
-          if (body.liveProviderExecution !== false) {
-            throw new Error('Live provider execution must remain disabled');
+          if (ready.liveProviderExecution !== false) {
+            throw new Error('Credential-free runtime must not enable provider execution');
           }
-          console.log(JSON.stringify(body));
+          if (!Array.isArray(ready.operationalProviders) || ready.operationalProviders.length !== 0) {
+            throw new Error('Credential-free runtime must have no operational provider');
+          }
+
+          const request = {
+            requestId: 'container-complete-smoke',
+            operatingMode: 'build',
+            task: 'Create a sanitized decision memo',
+            intendedOutcome: 'A review candidate',
+            input: 'Public context only',
+            contextReferences: [],
+            dataClass: 'green',
+            sanitizationState: 'not-required',
+            excludedInformation: [],
+            requiredCapabilities: ['reasoning'],
+            allowedProviders: ['gemini', 'claude', 'chatgpt'],
+            allowFallback: true,
+            evidenceRequirements: {
+              citationsRequired: false,
+              approvedSourceIds: []
+            },
+            validationRequirements: {
+              humanReviewRequired: true,
+              internalValidationRequired: true
+            },
+            toolPermissions: [],
+            createdAt: '2026-08-08T00:00:00.000Z'
+          };
+          const completeResponse = await fetch('http://127.0.0.1:18080/v1/complete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(request)
+          });
+          const complete = await completeResponse.json();
+          if (completeResponse.status !== 503 || complete.code !== 'routing-rejected') {
+            throw new Error(`Credential-free completion did not fail closed: ${JSON.stringify(complete)}`);
+          }
+          console.log(JSON.stringify(ready));
           NODE
 
-      - name: Publish runtime foundation summary
+      - name: Publish reference adapter summary
         shell: bash
         run: |
           {
             echo "## Phoenix Office Companion"
             echo "- Executive Office: Billy"
             echo "- Runtime: stateless containerized HTTP service"
-            echo "- Development/CI: Docker-compatible runtime and GitHub Actions"
             echo "- First production target: Azure Container Apps"
             echo "- Provider strategy: LLM-independent"
             echo "- Provider targets: Gemini, Claude, ChatGPT"
+            echo "- Gemini: reference adapter implemented"
             echo "- Permanent default provider: none"
-            echo "- Live provider execution: disabled"
-            echo "- Runtime foundation gate: passed"
+            echo "- Live execution: deployment-credential gated"
+            echo "- CI provider call: local deterministic mock only"
+            echo "- Human review: mandatory"
+            echo "- Autonomous publication: disabled"
+            echo "- Gemini reference adapter gate: passed"
           } >> "$GITHUB_STEP_SUMMARY"

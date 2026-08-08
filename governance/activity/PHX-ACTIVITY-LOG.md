@@ -12,6 +12,16 @@ Every material PHOENIX OS activity must record date/time, owner or agent, activi
 
 ## Entries
 
+### 2026-08-08 — Phoenix Office Companion Gemini reference adapter initiated
+- **Owner / Agent:** Billy / PHOENIX Executive Office
+- **Activity:** Created the Gemini reference adapter, credential-gated runtime activation, controlled completion endpoint and Microsoft-ready decision-memo workflow.
+- **Affected artifacts / systems:** `PHX-COMP-OFFICE-004`; `config/office-companion.json`; Gemini adapter and runtime-provider registry; `POST /v1/complete`; Office Companion tests and CI; branch `feat/office-companion-gemini-reference-adapter`.
+- **Result / Status:** ACTIVE DEVELOPMENT — REFERENCE ADAPTER. Gemini can become operational only when an approved deployment supplies both `GEMINI_API_KEY` and `GEMINI_MODEL`. Claude and ChatGPT remain registered first-class targets with planned adapters.
+- **Decision:** Gemini is the first reference adapter, not the permanent default. Outputs remain `Draft / Review Candidate`, unvalidated, human-review required and non-publishing. RED data and unsanitized YELLOW data are rejected before any provider call.
+- **Open points:** CI, merge and one live sanitized staging proof using an approved deployment secret remain outstanding. Microsoft Graph publication is not implemented.
+- **Errors / Blockers:** No real Gemini credential is available in the repository or CI. Tests use a deterministic local mock by design.
+- **Next step:** Pass the adapter, server, build and container gates; merge the reference adapter; then provision a governed staging secret and run one evidence-recorded live proof.
+
 ### 2026-08-08 — Phoenix Office Companion runtime server gate initiated
 - **Owner / Agent:** Billy / PHOENIX Executive Office
 - **Activity:** Approved the first hosting decision and implemented the stateless Office Companion HTTP server, container definition, smoke tests and CI runtime gate.

@@ -10,7 +10,11 @@ import {
   type OfficeTaskRequest,
   type SanitizationState,
 } from "./contracts.js";
-import { registeredOfficeProviders } from "./provider-registry.js";
+import {
+  completeOfficeTask,
+  OfficeCompletionError,
+} from "./completion-service.js";
+import { createOfficeRuntimeProviderState } from "./runtime-providers.js";
 import { routeOfficeTask } from "./router.js";
 
 const serviceName = "phoenix-office-companion";
@@ -36,7 +40,7 @@ interface RuntimeConfig {
   runtimeHosting?: {
     mode?: string;
     firstProductionTarget?: string;
-    liveProviderExecution?: boolean;
+    liveProviderExecution?: boolean | string;
   };
 }
 
@@ -44,6 +48,13 @@ interface RuntimeState {
   configPath: string;
   config: RuntimeConfig | null;
   failures: string[];
+}
+
+export interface OfficeCompanionServerOptions {
+  environment?: NodeJS.ProcessEnv;
+  providerFetch?: typeof fetch;
+  now?: () => Date;
+  providerTraceIdFactory?: () => string;
 }
 
 class HttpRequestError extends Error {
@@ -56,8 +67,8 @@ class HttpRequestError extends Error {
   }
 }
 
-function loadRuntimeState(): RuntimeState {
-  const configPath = process.env.OFFICE_COMPANION_CONFIG_PATH ?? defaultConfigPath;
+function loadRuntimeState(environment: NodeJS.ProcessEnv): RuntimeState {
+  const configPath = environment.OFFICE_COMPANION_CONFIG_PATH ?? defaultConfigPath;
   const failures: string[] = [];
   let config: RuntimeConfig | null = null;
 
@@ -107,8 +118,8 @@ function loadRuntimeState(): RuntimeState {
   if (config.runtimeHosting?.firstProductionTarget !== "azure-container-apps") {
     failures.push("The first production target must remain Azure Container Apps.");
   }
-  if (config.runtimeHosting?.liveProviderExecution !== false) {
-    failures.push("Live provider execution must remain disabled in the server foundation.");
+  if (config.runtimeHosting?.liveProviderExecution !== "credential-gated") {
+    failures.push("Live provider execution must remain credential-gated.");
   }
 
   return { configPath, config, failures };
@@ -293,8 +304,18 @@ function methodNotAllowed(response: ServerResponse, traceId: string, allowed: st
   });
 }
 
-export function createOfficeCompanionServer() {
-  const runtimeState = loadRuntimeState();
+export function createOfficeCompanionServer(
+  options: OfficeCompanionServerOptions = {},
+) {
+  const environment = options.environment ?? process.env;
+  const runtimeState = loadRuntimeState(environment);
+  const providerState = createOfficeRuntimeProviderState({
+    environment,
+    fetchImpl: options.providerFetch,
+    now: options.now,
+    traceIdFactory: options.providerTraceIdFactory,
+  });
+  const readinessFailures = [...runtimeState.failures, ...providerState.failures];
 
   return createServer(async (request, response) => {
     const traceId = randomUUID();
@@ -320,7 +341,7 @@ export function createOfficeCompanionServer() {
           methodNotAllowed(response, traceId, "GET");
           return;
         }
-        const ready = runtimeState.failures.length === 0;
+        const ready = readinessFailures.length === 0;
         writeJson(response, ready ? 200 : 503, traceId, {
           service: serviceName,
           status: ready ? "ready" : "not-ready",
@@ -328,12 +349,13 @@ export function createOfficeCompanionServer() {
           hostingMode: runtimeState.config?.runtimeHosting?.mode ?? null,
           firstProductionTarget:
             runtimeState.config?.runtimeHosting?.firstProductionTarget ?? null,
-          liveProviderExecution: false,
-          registeredProviders: registeredOfficeProviders.map((provider) => ({
+          liveProviderExecution: providerState.operationalProviderIds.length > 0,
+          operationalProviders: providerState.operationalProviderIds,
+          registeredProviders: providerState.providers.map((provider) => ({
             id: provider.id,
             status: provider.status,
           })),
-          failures: runtimeState.failures,
+          failures: readinessFailures,
           traceId,
           timestamp: new Date().toISOString(),
         });
@@ -345,7 +367,7 @@ export function createOfficeCompanionServer() {
           methodNotAllowed(response, traceId, "POST");
           return;
         }
-        if (runtimeState.failures.length > 0) {
+        if (readinessFailures.length > 0) {
           writeJson(response, 503, traceId, {
             status: "error",
             code: "runtime-not-ready",
@@ -356,12 +378,39 @@ export function createOfficeCompanionServer() {
         }
 
         const taskRequest = validateTaskRequest(await readJsonBody(request));
-        const decision = routeOfficeTask(taskRequest, registeredOfficeProviders);
+        const decision = routeOfficeTask(taskRequest, providerState.providers);
         writeJson(response, 200, traceId, {
           requestId: taskRequest.requestId,
           traceId,
-          liveProviderExecution: false,
+          liveProviderExecution: providerState.operationalProviderIds.length > 0,
           decision,
+        });
+        return;
+      }
+
+      if (url.pathname === "/v1/complete") {
+        if (request.method !== "POST") {
+          methodNotAllowed(response, traceId, "POST");
+          return;
+        }
+        if (readinessFailures.length > 0) {
+          writeJson(response, 503, traceId, {
+            status: "error",
+            code: "runtime-not-ready",
+            message: "Runtime configuration failed readiness validation.",
+            traceId,
+          });
+          return;
+        }
+
+        const taskRequest = validateTaskRequest(await readJsonBody(request));
+        const result = await completeOfficeTask(taskRequest, {
+          providers: providerState.providers,
+          adapters: providerState.adapters,
+        });
+        writeJson(response, 200, traceId, {
+          ...result,
+          traceId,
         });
         return;
       }
@@ -373,6 +422,17 @@ export function createOfficeCompanionServer() {
         traceId,
       });
     } catch (error) {
+      if (error instanceof OfficeCompletionError) {
+        writeJson(response, error.httpStatus, traceId, {
+          status: "error",
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          traceId,
+        });
+        return;
+      }
+
       const requestError =
         error instanceof HttpRequestError
           ? error

@@ -39,6 +39,15 @@ export const registeredOfficeProviders: OfficeProviderDescriptor[] = [
   },
 ];
 
+export function cloneRegisteredOfficeProviders(): OfficeProviderDescriptor[] {
+  return registeredOfficeProviders.map((provider) => ({
+    ...provider,
+    supportedCapabilities: [...provider.supportedCapabilities],
+    allowedDataClasses: [...provider.allowedDataClasses],
+    evidence: { ...provider.evidence },
+  }));
+}
+
 export interface ProviderActivation {
   id: OfficeProviderId;
   supportedCapabilities: string[];

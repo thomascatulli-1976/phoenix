@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "companion": {
     "id": "phoenix-office-companion",
     "registryKey": "phx:companion:office-companion",
@@ -27,6 +27,11 @@
         "id": "PHX-COMP-OFFICE-003",
         "driveFileId": "14uQ9mabJupdvl4KMollPG2IHYgFEsuPnNyLhSrEqx14",
         "title": "Runtime Hosting and MVP Deployment Decision v1.0"
+      },
+      {
+        "id": "PHX-COMP-OFFICE-004",
+        "driveFileId": "1judeekl2lyh5LONT4Ad_wkhsf2Vqftq0A1pSVhzAilY",
+        "title": "Gemini Reference Adapter and Controlled Output Workflow v1.0"
       }
     ],
     "technicalRepository": "thomascatulli-1976/phoenix"
@@ -43,8 +48,10 @@
         "id": "gemini",
         "displayName": "Gemini",
         "status": "registered",
-        "adapterState": "planned",
+        "adapterState": "implemented-reference",
         "credentialRequired": true,
+        "credentialEnvironmentVariable": "GEMINI_API_KEY",
+        "modelEnvironmentVariable": "GEMINI_MODEL",
         "allowedDataClasses": ["green", "yellow-sanitized"]
       },
       {
@@ -71,9 +78,24 @@
     "ciRuntime": "github-actions",
     "firstProductionTarget": "azure-container-apps",
     "portableContainerRuntime": true,
-    "liveProviderExecution": false,
-    "foundationEndpoints": ["GET /health", "GET /ready", "POST /v1/route"],
+    "liveProviderExecution": "credential-gated",
+    "foundationEndpoints": [
+      "GET /health",
+      "GET /ready",
+      "POST /v1/route",
+      "POST /v1/complete"
+    ],
     "secretsLocation": "deployment-secret-store-only"
+  },
+  "referenceWorkflow": {
+    "id": "microsoft-ready-decision-memo-v1",
+    "provider": "gemini",
+    "providerRole": "reference-adapter-not-default",
+    "outputStatus": "Draft / Review Candidate",
+    "targetSystem": "Microsoft Word / SharePoint",
+    "validationState": "unvalidated",
+    "humanReviewRequired": true,
+    "autonomousPublication": false
   },
   "operatingModes": ["find", "think", "build", "validate", "publish"],
   "dataGate": {
@@ -89,5 +111,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "Complete the stateless container runtime gate, then implement the Gemini reference adapter and one sanitized human-approved end-to-end workflow without creating a permanent provider default."
+  "nextDeliverable": "Run the first live sanitized Gemini staging proof with an approved deployment secret, then implement Claude and ChatGPT adapters without changing the provider-neutral core."
 }
