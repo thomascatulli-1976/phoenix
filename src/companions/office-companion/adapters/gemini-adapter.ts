@@ -8,6 +8,10 @@ import {
   microsoftReadyDraftJsonSchema,
   parseMicrosoftReadyDraft,
 } from "../workflows/microsoft-ready-output.js";
+import {
+  buildMicrosoftReadyDraftPrompt,
+  microsoftReadyDraftSystemInstruction,
+} from "../workflows/microsoft-ready-prompt.js";
 
 const defaultGeminiApiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
 const defaultTimeoutMs = 60_000;
@@ -60,7 +64,6 @@ interface GeminiGenerateContentResponse {
       parts?: Array<{ text?: string }>;
     };
     finishReason?: string;
-    finishMessage?: string;
   }>;
   usageMetadata?: {
     promptTokenCount?: number;
@@ -75,30 +78,6 @@ function normalizeBaseUrl(value: string): string {
 
 function normalizeModel(value: string): string {
   return value.trim().replace(/^models\//, "");
-}
-
-function buildPrompt(request: OfficeTaskRequest): string {
-  const taskEnvelope = {
-    operatingMode: request.operatingMode,
-    task: request.task,
-    intendedOutcome: request.intendedOutcome,
-    sanitizedInput: request.input,
-    contextReferences: request.contextReferences,
-    excludedInformation: request.excludedInformation,
-    evidenceRequirements: request.evidenceRequirements,
-    validationRequirements: request.validationRequirements,
-  };
-
-  return [
-    "Create a Microsoft-ready decision memo draft from the supplied sanitized context.",
-    "Use only the supplied context. Do not invent internal facts, names, numbers, approvals or source validation.",
-    "When information is missing, record it under openPoints and internalValidationRequired.",
-    "Provide at least two distinct decision options. Keep recommendation and rationale separate.",
-    "Return only the structured JSON object required by the response schema.",
-    "The provider must not set owner, approval, validation state, sensitivity, target system or publication status; Phoenix adds those fields after generation.",
-    "TASK ENVELOPE:",
-    JSON.stringify(taskEnvelope, null, 2),
-  ].join("\n\n");
 }
 
 function extractCandidateText(payload: GeminiGenerateContentResponse): {
@@ -201,16 +180,12 @@ export class GeminiOfficeAdapter implements OfficeProviderAdapter {
         },
         body: JSON.stringify({
           systemInstruction: {
-            parts: [
-              {
-                text: "You are the Phoenix Office Companion drafting engine. Follow the supplied data boundaries and output schema exactly.",
-              },
-            ],
+            parts: [{ text: microsoftReadyDraftSystemInstruction }],
           },
           contents: [
             {
               role: "user",
-              parts: [{ text: buildPrompt(request) }],
+              parts: [{ text: buildMicrosoftReadyDraftPrompt(request) }],
             },
           ],
           generationConfig: {
