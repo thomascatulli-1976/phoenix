@@ -14,6 +14,7 @@ import {
 } from "./workflows/microsoft-ready-output.js";
 
 export type OfficeCompletionErrorCode =
+  | "human-review-required"
   | "routing-rejected"
   | "provider-unavailable"
   | "provider-execution-failed"
@@ -86,6 +87,14 @@ export async function completeOfficeTask(
   request: OfficeTaskRequest,
   dependencies: OfficeCompletionDependencies,
 ): Promise<OfficeCompletionResult> {
+  if (request.validationRequirements.humanReviewRequired !== true) {
+    throw new OfficeCompletionError(
+      "human-review-required",
+      "The Microsoft-ready completion workflow requires explicit human review.",
+      422,
+    );
+  }
+
   const routingDecision = routeOfficeTask(request, dependencies.providers);
   if (routingDecision.status === "rejected") {
     throw new OfficeCompletionError(
@@ -135,6 +144,18 @@ export async function completeOfficeTask(
         responseStatus: providerResponse.status,
         safetyStatus: providerResponse.safetyStatus,
       },
+    );
+  }
+
+  if (
+    request.evidenceRequirements.citationsRequired &&
+    providerResponse.citations.length === 0
+  ) {
+    throw new OfficeCompletionError(
+      "provider-response-invalid",
+      `Provider ${routingDecision.provider} returned no citations for a citation-required request.`,
+      502,
+      { routingDecision, provider: routingDecision.provider },
     );
   }
 

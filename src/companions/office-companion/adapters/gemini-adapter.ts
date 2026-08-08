@@ -214,13 +214,10 @@ export class GeminiOfficeAdapter implements OfficeProviderAdapter {
             },
           ],
           generationConfig: {
+            candidateCount: 1,
             maxOutputTokens: 4096,
-            responseFormat: {
-              text: {
-                mimeType: "application/json",
-                schema: microsoftReadyDraftJsonSchema,
-              },
-            },
+            responseMimeType: "application/json",
+            responseJsonSchema: microsoftReadyDraftJsonSchema,
           },
         }),
         signal: controller.signal,

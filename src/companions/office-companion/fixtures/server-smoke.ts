@@ -39,7 +39,7 @@ function baseTaskRequest(overrides: Record<string, unknown> = {}): Record<string
 }
 
 export async function runOfficeCompanionServerSmoke(): Promise<void> {
-  const server = createOfficeCompanionServer();
+  const server = createOfficeCompanionServer({ environment: {} });
 
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -65,6 +65,7 @@ export async function runOfficeCompanionServerSmoke(): Promise<void> {
     assert.equal(ready.hostingMode, "stateless-container");
     assert.equal(ready.firstProductionTarget, "azure-container-apps");
     assert.equal(ready.liveProviderExecution, false);
+    assert.deepEqual(ready.operationalProviders, []);
     assert.deepEqual(
       (ready.registeredProviders as Array<{ id: string }>).map((provider) => provider.id),
       ["gemini", "claude", "chatgpt"],
@@ -85,6 +86,15 @@ export async function runOfficeCompanionServerSmoke(): Promise<void> {
       fallbackProviders: [],
       reason: "No available provider satisfies the data policy and required capabilities.",
     });
+
+    const completeResponse = await fetch(`${baseUrl}/v1/complete`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(baseTaskRequest()),
+    });
+    assert.equal(completeResponse.status, 503);
+    const completion = await parseJson(completeResponse);
+    assert.equal(completion.code, "routing-rejected");
 
     const redResponse = await fetch(`${baseUrl}/v1/route`, {
       method: "POST",

@@ -13,7 +13,7 @@
     "acceptance:office": "tsx src/companions/office-companion/fixtures/run-acceptance-suite.ts",
     "acceptance:office-gemini": "tsx src/companions/office-companion/fixtures/run-gemini-adapter-acceptance.ts",
     "smoke:office-server": "tsx src/companions/office-companion/fixtures/run-server-smoke.ts",
-    "test": "npm run validate:billy && npm run validate:office && npm run typecheck && npm run acceptance:family && npm run acceptance:office && npm run acceptance:office-gemini && npm run smoke:office-server && npm run build:office"
+    "test": "npm run validate:billy && npm run validate:office && npm run typecheck && npm run acceptance:family && npm run acceptance:office && npm run smoke:office-server && npm run acceptance:office-gemini && npm run build:office"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",

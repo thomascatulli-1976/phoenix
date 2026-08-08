@@ -4,16 +4,23 @@ const configPath = "config/office-companion.json";
 const requiredFiles = [
   "Dockerfile",
   ".dockerignore",
+  ".env.example",
   "tsconfig.build.json",
   "docs/companions/office-companion/README.md",
   "src/companions/office-companion/contracts.ts",
   "src/companions/office-companion/provider-registry.ts",
   "src/companions/office-companion/router.ts",
+  "src/companions/office-companion/runtime-providers.ts",
+  "src/companions/office-companion/completion-service.ts",
   "src/companions/office-companion/server.ts",
+  "src/companions/office-companion/adapters/gemini-adapter.ts",
+  "src/companions/office-companion/workflows/microsoft-ready-output.ts",
   "src/companions/office-companion/fixtures/acceptance-suite.ts",
   "src/companions/office-companion/fixtures/run-acceptance-suite.ts",
   "src/companions/office-companion/fixtures/server-smoke.ts",
   "src/companions/office-companion/fixtures/run-server-smoke.ts",
+  "src/companions/office-companion/fixtures/gemini-adapter-acceptance.ts",
+  "src/companions/office-companion/fixtures/run-gemini-adapter-acceptance.ts",
 ];
 
 const failures = [];
@@ -31,6 +38,7 @@ if (failures.length === 0) {
   const companion = cfg.companion ?? {};
   const strategy = cfg.llmStrategy ?? {};
   const hosting = cfg.runtimeHosting ?? {};
+  const workflow = cfg.referenceWorkflow ?? {};
   const execution = cfg.executionPolicy ?? {};
   const dataGate = cfg.dataGate ?? {};
 
@@ -69,6 +77,7 @@ if (failures.length === 0) {
     ["PHX-COMP-OFFICE-001", "1Sge32CnSoPyB_PBT2EV1GBCUNCRjmgLDH0-LPpSmYXc"],
     ["PHX-COMP-OFFICE-002", "1QMTbTHmlzd7eKfkqHfJAHHAZvtEk5FpZNpH48SFnqJc"],
     ["PHX-COMP-OFFICE-003", "14uQ9mabJupdvl4KMollPG2IHYgFEsuPnNyLhSrEqx14"],
+    ["PHX-COMP-OFFICE-004", "1judeekl2lyh5LONT4Ad_wkhsf2Vqftq0A1pSVhzAilY"],
   ]);
 
   for (const [id, driveFileId] of expectedArtifacts) {
@@ -113,6 +122,27 @@ if (failures.length === 0) {
     }
   }
 
+  const gemini = providers.find((provider) => provider.id === "gemini");
+  if (gemini?.status !== "registered") {
+    failures.push("Gemini must remain registered, not statically marked available");
+  }
+  if (gemini?.adapterState !== "implemented-reference") {
+    failures.push("Gemini reference adapter state is invalid");
+  }
+  if (gemini?.credentialEnvironmentVariable !== "GEMINI_API_KEY") {
+    failures.push("Gemini credential environment variable is invalid");
+  }
+  if (gemini?.modelEnvironmentVariable !== "GEMINI_MODEL") {
+    failures.push("Gemini model environment variable is invalid");
+  }
+
+  for (const providerId of ["claude", "chatgpt"]) {
+    const provider = providers.find((item) => item.id === providerId);
+    if (provider?.adapterState !== "planned") {
+      failures.push(`${providerId} adapter must remain explicitly planned`);
+    }
+  }
+
   if (hosting.mode !== "stateless-container") {
     failures.push("Office Companion hosting mode must be stateless-container");
   }
@@ -128,15 +158,36 @@ if (failures.length === 0) {
   if (hosting.portableContainerRuntime !== true) {
     failures.push("The runtime must remain portable across compliant container platforms");
   }
-  if (hosting.liveProviderExecution !== false) {
-    failures.push("Live provider execution must remain disabled in the server foundation");
+  if (hosting.liveProviderExecution !== "credential-gated") {
+    failures.push("Live provider execution must be credential-gated");
   }
-  const expectedEndpoints = ["GET /health", "GET /ready", "POST /v1/route"];
+  const expectedEndpoints = [
+    "GET /health",
+    "GET /ready",
+    "POST /v1/route",
+    "POST /v1/complete",
+  ];
   if (JSON.stringify(hosting.foundationEndpoints) !== JSON.stringify(expectedEndpoints)) {
-    failures.push("Foundation endpoints are invalid or incomplete");
+    failures.push("Runtime endpoints are invalid or incomplete");
   }
   if (hosting.secretsLocation !== "deployment-secret-store-only") {
     failures.push("Secrets must remain in a deployment secret store only");
+  }
+
+  if (workflow.provider !== "gemini") {
+    failures.push("The first reference workflow must use the Gemini adapter");
+  }
+  if (workflow.providerRole !== "reference-adapter-not-default") {
+    failures.push("Gemini must not become a permanent default provider");
+  }
+  if (workflow.outputStatus !== "Draft / Review Candidate") {
+    failures.push("Reference workflow output status is invalid");
+  }
+  if (workflow.validationState !== "unvalidated") {
+    failures.push("Reference workflow must remain unvalidated until human review");
+  }
+  if (workflow.humanReviewRequired !== true || workflow.autonomousPublication !== false) {
+    failures.push("Reference workflow review and publication boundary is invalid");
   }
 
   if (dataGate.green !== "allowed-by-policy") {
@@ -181,8 +232,35 @@ if (failures.length === 0) {
   if (!dockerfile.includes("HEALTHCHECK")) {
     failures.push("Runtime container must define a health check");
   }
-  if (!dockerfile.includes("dist/companions/office-companion/server.js")) {
-    failures.push("Runtime container entry point is invalid");
+
+  const adapterSource = fs.readFileSync(
+    "src/companions/office-companion/adapters/gemini-adapter.ts",
+    "utf8",
+  );
+  if (!adapterSource.includes('"x-goog-api-key"')) {
+    failures.push("Gemini adapter must use the provider authentication header");
+  }
+  if (!adapterSource.includes("responseMimeType")) {
+    failures.push("Gemini adapter must request JSON output");
+  }
+  if (!adapterSource.includes("responseJsonSchema")) {
+    failures.push("Gemini adapter must enforce the structured output schema");
+  }
+
+  const serverSource = fs.readFileSync(
+    "src/companions/office-companion/server.ts",
+    "utf8",
+  );
+  if (!serverSource.includes('url.pathname === "/v1/complete"')) {
+    failures.push("Office Companion completion endpoint is missing");
+  }
+
+  const envExample = fs.readFileSync(".env.example", "utf8");
+  if (!envExample.includes("GEMINI_API_KEY=\n")) {
+    failures.push("The example environment file must leave the Gemini credential empty");
+  }
+  if (/GEMINI_API_KEY=.+/.test(envExample)) {
+    failures.push("The example environment file must not contain a Gemini credential value");
   }
 }
 
@@ -194,5 +272,5 @@ if (failures.length > 0) {
 
 console.log("Phoenix Office Companion governance configuration is valid.");
 console.log(
-  "Validated Billy ownership, Drive anchors, provider neutrality, stateless hosting and fail-closed execution.",
+  "Validated Billy ownership, Drive anchors, provider neutrality, credential-gated Gemini execution and human-reviewed Microsoft-ready output.",
 );

@@ -1,6 +1,6 @@
 # Phoenix Office Companion
 
-**Status:** Active development — runtime foundation  
+**Status:** Active development — Gemini reference adapter  
 **Executive Office:** Billy  
 **Parent product:** Phoenix One  
 **Parent runtime:** Phoenix Companion Runtime  
@@ -9,9 +9,9 @@
 
 ## Purpose
 
-The Phoenix Office Companion is a specialized companion for governed knowledge work across personal AI workspaces and enterprise office systems. It is not a separate top-level Phoenix product and it does not replace the shared Phoenix Companion Runtime.
+The Phoenix Office Companion is a specialized companion for governed knowledge work across personal AI workspaces and enterprise office systems. It remains part of Phoenix One and uses the shared Phoenix Companion Runtime.
 
-Its core is LLM-independent. Gemini, Claude and ChatGPT are the initial first-class provider targets. Provider names remain in adapters and configuration; universal task, policy, workflow and response contracts remain provider-neutral.
+The core is LLM-independent. Gemini, Claude and ChatGPT are equal first-class provider targets. Gemini is implemented first as a reference adapter; it is not a permanent default.
 
 ## Canonical artifacts
 
@@ -20,89 +20,91 @@ Drive remains authoritative for approved business, governance and architecture s
 - `PHX-COMP-OFFICE-001` — Phoenix Office Companion System Definition v1.0
 - `PHX-COMP-OFFICE-002` — Provider-Neutral Runtime and Routing Architecture v1.0
 - `PHX-COMP-OFFICE-003` — Runtime Hosting and MVP Deployment Decision v1.0
+- `PHX-COMP-OFFICE-004` — Gemini Reference Adapter and Controlled Output Workflow v1.0
 
 GitHub remains authoritative for executable implementation, configuration, tests, container definition and CI evidence.
 
-## Runtime decision
+## Runtime
 
-The Office Companion runs as a stateless HTTP service inside a portable container image.
-
-- local development: Docker-compatible runtime
-- CI and acceptance: GitHub Actions
-- first governed production target: Azure Container Apps
-- portable core: no Azure SDK types in universal contracts
-- live provider execution: disabled during the server-foundation gate
-- production credentials: prohibited in source control and Drive specifications
-
-Azure is the first deployment target because the intended enterprise integration surface includes Microsoft Entra ID, Microsoft Graph, Azure Key Vault and Microsoft 365. The Office Companion core remains deployable on another approved container platform.
-
-## Foundation endpoints
+The Office Companion is a stateless HTTP service in a portable container image.
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /health` | Process liveness |
-| `GET /ready` | Configuration, governance-anchor and provider-registry readiness |
-| `POST /v1/route` | Policy-first provider selection without a live model call |
+| `GET /ready` | Governance, runtime and provider readiness |
+| `POST /v1/route` | Policy-first provider selection without execution |
+| `POST /v1/complete` | Credential-gated provider execution and Microsoft-ready packaging |
 
-The routing endpoint validates the normalized task contract, rejects RED data, rejects unsanitized YELLOW data and fails closed when no registered provider is operational. No endpoint sends, publishes, approves or performs consequential external actions.
+The completion endpoint never publishes to Microsoft 365. It returns a `Draft / Review Candidate` with `validationState: unvalidated`, `humanReviewRequired: true` and `autonomousPublication: false`.
 
-## Foundation structure
+## Gemini reference adapter
 
-- `config/office-companion.json` — ownership, Drive anchors, provider registry, hosting and execution boundary
-- `src/companions/office-companion/contracts.ts` — normalized request, response, evidence, tool and adapter contracts
-- `src/companions/office-companion/provider-registry.ts` — registered provider targets and controlled activation helper
-- `src/companions/office-companion/router.ts` — policy-first provider selection
-- `src/companions/office-companion/server.ts` — stateless HTTP runtime
-- `src/companions/office-companion/fixtures/` — routing acceptance and server smoke tests
-- `scripts/validate-office-companion.mjs` — governance, hosting and repository drift validation
-- `Dockerfile` — non-root, multi-stage runtime image
-- `.github/workflows/office-companion.yml` — CI and container gate
+The Gemini adapter:
 
-## Provider policy
+- activates only when both `GEMINI_API_KEY` and `GEMINI_MODEL` are present;
+- sends the credential only in the provider authentication header;
+- requests JSON structured output using the Phoenix decision-memo schema;
+- normalizes provider output into the universal Office Companion response contract;
+- rejects provider failures, blocked responses, empty responses and invalid structured output;
+- does not log or persist the credential;
+- does not make Gemini the permanent default provider.
 
-The foundation registers:
+Runtime configuration:
 
-- Gemini
-- Claude
-- ChatGPT
+```text
+GEMINI_API_KEY=<deployment secret>
+GEMINI_MODEL=<approved model identifier>
+GEMINI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+GEMINI_TIMEOUT_MS=60000
+```
 
-No provider is represented as operational until a tested adapter and approved deployment credentials exist. There is no permanent default provider. Runtime selection is based on:
+Real values belong only in a local untracked environment file or an approved deployment secret store. The repository contains `.env.example` with an empty credential field.
 
-1. data and enterprise policy;
-2. required capability and tool access;
-3. explicit eligible user preference;
-4. current quality, reliability, latency and cost evidence;
-5. provider availability.
+## Controlled output workflow
 
-Fallback is never silent. It must be permitted, policy-compliant, recorded and disclosed.
+The first end-to-end workflow produces a Microsoft-ready decision memo package containing:
+
+- artifact title and type;
+- draft/review status;
+- target system;
+- decision requirement;
+- management summary;
+- options, recommendation and rationale;
+- assumptions and open points;
+- internal validation requirements;
+- source/evidence status;
+- excluded information;
+- provider and trace metadata;
+- explicit human-review and non-publication controls.
+
+The provider generates only the draft content. Phoenix adds governance fields such as owner placeholder, sensitivity, validation state, target system and publication boundary.
 
 ## Data gate
 
-| Class | Foundation behavior |
+| Class | Runtime behavior |
 |---|---|
-| GREEN | May be routed to an allowed and operational provider |
-| YELLOW | Requires minimization, anonymization, aggregation or abstraction before routing |
-| RED | Rejected for external provider routing by default |
+| GREEN | May be routed to an eligible operational provider |
+| YELLOW | Must be sanitized before routing |
+| RED | Rejected before any external provider call |
 
-A provider connection never grants permission to process data. Deployment policy and data classification remain authoritative.
+A provider credential never grants permission to process data.
 
-## Operating modes
+## Provider policy
 
-- **FIND** — retrieve and summarize approved information
-- **THINK** — structure, challenge and synthesize
-- **BUILD** — produce working artifacts
-- **VALIDATE** — check against approved evidence and internal records
-- **PUBLISH** — transfer reviewed outputs into the applicable system of record
+- Gemini: registered, reference adapter implemented, operational only when configured
+- Claude: registered, adapter planned
+- ChatGPT: registered, adapter planned
+- permanent default: none
+- silent fallback: prohibited
+- fallback: only when policy permits and the selected change is disclosed
 
-Material publication remains human-approved.
+## Microsoft boundary
 
-## Microsoft deployment boundary
+Microsoft 365 remains the enterprise system of record for Outlook, Teams, SharePoint, OneDrive and approved Office artifacts. The current workflow produces a Microsoft-ready package but performs no Graph call, upload, send, approval or publication.
 
-For a Microsoft deployment, Microsoft 365 remains the system of record for Outlook, Teams, SharePoint, OneDrive and approved Office artifacts. Microsoft 365 Copilot may be used for tenant-side retrieval and validation, but it is neither the universal reasoning core nor a hard dependency of the Office Companion.
+A future Microsoft Graph connector requires separate tenant administration, scopes, security review and approval.
 
-Microsoft Graph access is introduced only through a separately approved connector, tenant administration and explicit scopes.
-
-## Development commands
+## Development and tests
 
 ```text
 npm install --no-audit --no-fund
@@ -110,36 +112,52 @@ npm run validate:office
 npm run typecheck
 npm run acceptance:office
 npm run smoke:office-server
+npm run acceptance:office-gemini
 npm run build:office
 npm test
 ```
 
-Run the compiled server:
+The Gemini acceptance test uses a deterministic local mock. It checks authentication-header handling, structured-output configuration, RED-data rejection, human-review enforcement and Microsoft-ready packaging without calling a live provider or requiring a real secret.
+
+Run without a provider credential:
 
 ```text
 npm run build:office
 npm run start:office
 ```
 
-Build and run the container:
+The server reports ready, while `/v1/complete` fails closed because no provider is operational.
+
+Run a credential-gated local proof:
 
 ```text
-docker build -t phoenix-office-companion .
-docker run --rm -p 8080:8080 phoenix-office-companion
+cp .env.example .env
+# Populate GEMINI_API_KEY and GEMINI_MODEL locally, then export the variables.
+npm run build:office
+npm run start:office
 ```
+
+No `.env` file may be committed.
+
+## Hosting
+
+- local development: Docker-compatible runtime
+- CI: GitHub Actions without provider credentials
+- first governed staging target: Azure Container Apps
+- secret target: Azure Key Vault or an approved equivalent
+- universal core: no Azure SDK or Gemini SDK dependency
 
 ## Current gate
 
-The runtime-foundation gate requires:
+The reference-adapter gate passes when:
 
-- Billy ownership and correct Phoenix repository anchors;
-- all three canonical Drive artifacts;
-- Gemini, Claude and ChatGPT registered as equal first-class targets;
-- no permanent provider default;
-- fail-closed data and execution policies;
-- compile-safe provider-neutral contracts;
-- health, readiness and routing smoke evidence;
-- a successful non-root container build and health check;
-- no production credential or live model call.
+- Billy ownership and all four Drive artifacts are traceable;
+- Gemini, Claude and ChatGPT remain registered in canonical order;
+- Gemini activates only through deployment configuration;
+- no permanent provider default is introduced;
+- RED and unsanitized YELLOW data are rejected before execution;
+- structured output is validated and normalized;
+- every output package remains unvalidated and human-reviewed;
+- unit, server, adapter, build and container gates pass without a live secret.
 
-The next delivery gate is the Gemini reference adapter and one sanitized end-to-end workflow that creates a Microsoft-ready output package, requires human validation and does not establish Gemini as a permanent default.
+The next delivery gate is one live sanitized Gemini staging proof using an approved deployment secret. After that, Claude and ChatGPT adapters can be implemented against the same contracts.

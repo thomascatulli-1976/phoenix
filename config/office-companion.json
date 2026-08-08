@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "companion": {
     "id": "phoenix-office-companion",
     "registryKey": "phx:companion:office-companion",
@@ -48,9 +48,10 @@
         "id": "gemini",
         "displayName": "Gemini",
         "status": "registered",
-        "adapterState": "implemented",
+        "adapterState": "implemented-reference",
         "credentialRequired": true,
-        "activation": "GEMINI_API_KEY and GEMINI_MODEL",
+        "credentialEnvironmentVariable": "GEMINI_API_KEY",
+        "modelEnvironmentVariable": "GEMINI_MODEL",
         "allowedDataClasses": ["green", "yellow-sanitized"]
       },
       {
@@ -84,15 +85,17 @@
       "POST /v1/route",
       "POST /v1/complete"
     ],
-    "secretsLocation": "deployment-secret-store-only",
-    "providerConfiguration": {
-      "gemini": {
-        "apiKeyEnvironmentVariable": "GEMINI_API_KEY",
-        "modelEnvironmentVariable": "GEMINI_MODEL",
-        "baseUrlEnvironmentVariable": "GEMINI_API_BASE_URL",
-        "timeoutEnvironmentVariable": "GEMINI_TIMEOUT_MS"
-      }
-    }
+    "secretsLocation": "deployment-secret-store-only"
+  },
+  "referenceWorkflow": {
+    "id": "microsoft-ready-decision-memo-v1",
+    "provider": "gemini",
+    "providerRole": "reference-adapter-not-default",
+    "outputStatus": "Draft / Review Candidate",
+    "targetSystem": "Microsoft Word / SharePoint",
+    "validationState": "unvalidated",
+    "humanReviewRequired": true,
+    "autonomousPublication": false
   },
   "operatingModes": ["find", "think", "build", "validate", "publish"],
   "dataGate": {
@@ -108,5 +111,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "Provision governed Gemini staging configuration and run one sanitized live end-to-end proof with human review; then implement Claude and ChatGPT adapters against the same contracts."
+  "nextDeliverable": "Run the first live sanitized Gemini staging proof with an approved deployment secret, then implement Claude and ChatGPT adapters without changing the provider-neutral core."
 }
