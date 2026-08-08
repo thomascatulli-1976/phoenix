@@ -12,6 +12,16 @@ Every material PHOENIX OS activity must record date/time, owner or agent, activi
 
 ## Entries
 
+### 2026-08-08 — Office Companion multi-provider adapter gate initiated
+- **Owner / Agent:** Billy / PHOENIX Executive Office
+- **Activity:** Expanded the Office Companion from the Gemini reference adapter to provider-neutral Gemini, Claude and ChatGPT adapters, independent activation, shared prompting, fair equal-score routing and deterministic provider evaluation.
+- **Affected artifacts / systems:** `PHX-COMP-OFFICE-005`; `config/office-companion.json`; provider adapters; runtime-provider activation; router; evaluation framework; multi-provider acceptance suite; Office Companion CI; branch `feat/office-companion-multi-provider-adapters`.
+- **Result / Status:** ACTIVE DEVELOPMENT — MULTI-PROVIDER GATE. All three providers implement the same universal contract and controlled Microsoft-ready workflow. CI uses deterministic mocks and no production secrets.
+- **Decision:** No provider is a permanent default. Activation requires the master switch, explicit provider allowlist and complete deployment configuration. Equal scores are distributed deterministically by request identity. Schema, governance and required-evidence failures remain blocking.
+- **Open points:** CI review and merge remain outstanding. Approved GREEN-data staging proofs and evidence review are still required before operational score updates. Microsoft Graph remains outside this gate.
+- **Errors / Blockers:** No approved live provider secrets or staging deployment are present. This does not block deterministic adapter and governance validation.
+- **Next step:** Pass the multi-provider build and container gate, merge the implementation, execute governed staging proofs and then design the separately approved Microsoft Graph connector.
+
 ### 2026-08-08 — Office Companion explicit live-provider gate aligned
 - **Owner / Agent:** Billy / PHOENIX Executive Office
 - **Activity:** Reconciled the Gemini runtime implementation with `PHX-COMP-OFFICE-004` by requiring an explicit live-provider enable flag in addition to credential and model configuration.

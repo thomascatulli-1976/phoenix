@@ -35,9 +35,9 @@ permissions:
   contents: read
 
 jobs:
-  gemini-reference-adapter-gate:
+  multi-provider-adapter-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -51,10 +51,10 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate governance, anchors and provider boundary
+      - name: Validate governance, Drive anchors and provider controls
         run: npm run validate:office
 
-      - name: Typecheck provider-neutral contracts and runtime
+      - name: Typecheck provider-neutral contracts and adapters
         run: npm run typecheck
 
       - name: Run provider-neutral routing acceptance suite
@@ -63,8 +63,11 @@ jobs:
       - name: Run stateless HTTP server smoke tests
         run: npm run smoke:office-server
 
-      - name: Run Gemini reference adapter acceptance with local mock
+      - name: Run Gemini reference adapter acceptance
         run: npm run acceptance:office-gemini
+
+      - name: Run Gemini, Claude and ChatGPT multi-provider acceptance
+        run: npm run acceptance:office-multi
 
       - name: Build production runtime
         run: npm run build:office
@@ -145,21 +148,20 @@ jobs:
           console.log(JSON.stringify(ready));
           NODE
 
-      - name: Publish reference adapter summary
+      - name: Publish multi-provider gate summary
         shell: bash
         run: |
           {
             echo "## Phoenix Office Companion"
             echo "- Executive Office: Billy"
-            echo "- Runtime: stateless containerized HTTP service"
-            echo "- First production target: Azure Container Apps"
             echo "- Provider strategy: LLM-independent"
-            echo "- Provider targets: Gemini, Claude, ChatGPT"
-            echo "- Gemini: reference adapter implemented"
+            echo "- Implemented adapters: Gemini, Claude, ChatGPT"
             echo "- Permanent default provider: none"
-            echo "- Live execution: deployment-credential gated"
-            echo "- CI provider call: local deterministic mock only"
+            echo "- Activation: master switch + provider allowlist + deployment credentials"
+            echo "- Equal-score routing: deterministic request distribution"
+            echo "- CI provider calls: deterministic local mocks only"
+            echo "- Evaluation: blocking schema, governance and required-evidence controls"
             echo "- Human review: mandatory"
             echo "- Autonomous publication: disabled"
-            echo "- Gemini reference adapter gate: passed"
+            echo "- Multi-provider adapter gate: passed"
           } >> "$GITHUB_STEP_SUMMARY"
