@@ -118,7 +118,11 @@ function extractCandidateText(payload: GeminiGenerateContentResponse): {
   }
 
   const finishReason = candidate.finishReason;
-  if (finishReason === "SAFETY" || finishReason === "BLOCKLIST" || finishReason === "PROHIBITED_CONTENT") {
+  if (
+    finishReason === "SAFETY" ||
+    finishReason === "BLOCKLIST" ||
+    finishReason === "PROHIBITED_CONTENT"
+  ) {
     throw new GeminiAdapterError(
       "provider-blocked",
       `Gemini blocked the response with finish reason ${finishReason}.`,
@@ -210,8 +214,6 @@ export class GeminiOfficeAdapter implements OfficeProviderAdapter {
             },
           ],
           generationConfig: {
-            candidateCount: 1,
-            temperature: 0.2,
             maxOutputTokens: 4096,
             responseFormat: {
               text: {

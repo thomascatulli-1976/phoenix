@@ -27,6 +27,11 @@
         "id": "PHX-COMP-OFFICE-003",
         "driveFileId": "14uQ9mabJupdvl4KMollPG2IHYgFEsuPnNyLhSrEqx14",
         "title": "Runtime Hosting and MVP Deployment Decision v1.0"
+      },
+      {
+        "id": "PHX-COMP-OFFICE-004",
+        "driveFileId": "1judeekl2lyh5LONT4Ad_wkhsf2Vqftq0A1pSVhzAilY",
+        "title": "Gemini Reference Adapter and Controlled Output Workflow v1.0"
       }
     ],
     "technicalRepository": "thomascatulli-1976/phoenix"
@@ -43,8 +48,9 @@
         "id": "gemini",
         "displayName": "Gemini",
         "status": "registered",
-        "adapterState": "planned",
+        "adapterState": "implemented",
         "credentialRequired": true,
+        "activation": "GEMINI_API_KEY and GEMINI_MODEL",
         "allowedDataClasses": ["green", "yellow-sanitized"]
       },
       {
@@ -71,9 +77,22 @@
     "ciRuntime": "github-actions",
     "firstProductionTarget": "azure-container-apps",
     "portableContainerRuntime": true,
-    "liveProviderExecution": false,
-    "foundationEndpoints": ["GET /health", "GET /ready", "POST /v1/route"],
-    "secretsLocation": "deployment-secret-store-only"
+    "liveProviderExecution": "credential-gated",
+    "foundationEndpoints": [
+      "GET /health",
+      "GET /ready",
+      "POST /v1/route",
+      "POST /v1/complete"
+    ],
+    "secretsLocation": "deployment-secret-store-only",
+    "providerConfiguration": {
+      "gemini": {
+        "apiKeyEnvironmentVariable": "GEMINI_API_KEY",
+        "modelEnvironmentVariable": "GEMINI_MODEL",
+        "baseUrlEnvironmentVariable": "GEMINI_API_BASE_URL",
+        "timeoutEnvironmentVariable": "GEMINI_TIMEOUT_MS"
+      }
+    }
   },
   "operatingModes": ["find", "think", "build", "validate", "publish"],
   "dataGate": {
@@ -89,5 +108,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "Complete the stateless container runtime gate, then implement the Gemini reference adapter and one sanitized human-approved end-to-end workflow without creating a permanent provider default."
+  "nextDeliverable": "Provision governed Gemini staging configuration and run one sanitized live end-to-end proof with human review; then implement Claude and ChatGPT adapters against the same contracts."
 }
