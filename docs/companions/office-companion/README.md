@@ -1,6 +1,6 @@
 # Phoenix Office Companion
 
-**Status:** Active development — Gemini reference adapter  
+**Status:** Active development — multi-provider adapter gate  
 **Executive Office:** Billy  
 **Parent product:** Phoenix One  
 **Parent runtime:** Phoenix Companion Runtime  
@@ -9,94 +9,129 @@
 
 ## Purpose
 
-The Phoenix Office Companion is a specialized companion for governed knowledge work across personal AI workspaces and enterprise office systems. It remains part of Phoenix One and uses the shared Phoenix Companion Runtime.
+The Phoenix Office Companion is a governed knowledge-work companion inside Phoenix One. Its core remains LLM-independent. Gemini, Claude and ChatGPT implement the same provider-neutral request, response, routing and Microsoft-ready output contracts.
 
-The core is LLM-independent. Gemini, Claude and ChatGPT are equal first-class provider targets. Gemini is implemented first as a reference adapter; it is not a permanent default.
+No provider is a permanent default. Selection is governed by data policy, capability, current evidence and an eligible explicit user preference.
 
 ## Canonical artifacts
 
-Drive remains authoritative for approved business, governance and architecture specifications:
+Drive is authoritative for approved business, governance and architecture specifications:
 
 - `PHX-COMP-OFFICE-001` — Phoenix Office Companion System Definition v1.0
 - `PHX-COMP-OFFICE-002` — Provider-Neutral Runtime and Routing Architecture v1.0
 - `PHX-COMP-OFFICE-003` — Runtime Hosting and MVP Deployment Decision v1.0
 - `PHX-COMP-OFFICE-004` — Gemini Reference Adapter and Controlled Output Workflow v1.0
+- `PHX-COMP-OFFICE-005` — Multi-Provider Adapter Expansion and Evaluation Framework v1.0
 
-GitHub remains authoritative for executable implementation, configuration, tests, container definition and CI evidence.
+GitHub is authoritative for executable implementation, configuration, tests, container definition and CI evidence.
 
-## Runtime
-
-The Office Companion is a stateless HTTP service in a portable container image.
+## Runtime API
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /health` | Process liveness |
-| `GET /ready` | Governance, runtime and provider readiness |
+| `GET /ready` | Governance, configuration and provider readiness |
 | `POST /v1/route` | Policy-first provider selection without execution |
-| `POST /v1/complete` | Explicitly enabled, credential-gated provider execution and Microsoft-ready packaging |
+| `POST /v1/complete` | Controlled provider execution and Microsoft-ready packaging |
 
-The completion endpoint never publishes to Microsoft 365. It returns a `Draft / Review Candidate` with `validationState: unvalidated`, `humanReviewRequired: true` and `autonomousPublication: false`.
+The completion endpoint returns a `Draft / Review Candidate` with `validationState: unvalidated`, `humanReviewRequired: true` and `autonomousPublication: false`. It does not upload, send, approve or publish anything in Microsoft 365.
 
-## Gemini reference adapter
+## Provider activation
 
-The Gemini adapter becomes operational only when all three required deployment variables are present:
+The master control is:
 
 ```text
 OFFICE_COMPANION_ENABLE_LIVE_PROVIDER=true
-GEMINI_API_KEY=<deployment secret>
-GEMINI_MODEL=<approved model identifier>
 ```
 
-Optional variables:
+The independent provider allowlist is:
 
 ```text
+OFFICE_COMPANION_ENABLED_PROVIDERS=gemini,claude,chatgpt
+```
+
+When the master control is true and the allowlist is omitted, only Gemini is enabled for backward compatibility with the reference-adapter stage. This is not a routing default.
+
+Every enabled provider requires both its credential and model. Credentials or model configuration for a provider outside the allowlist cause a fail-closed readiness error. Unknown and duplicate provider IDs also fail readiness.
+
+### Gemini
+
+```text
+GEMINI_API_KEY=<deployment secret>
+GEMINI_MODEL=<approved model>
 GEMINI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 GEMINI_TIMEOUT_MS=60000
 ```
 
-Key and model values without the exact explicit enable flag cause a fail-closed readiness error. This prevents accidental provider activation merely because credentials exist in an environment.
+The adapter uses `x-goog-api-key` and JSON-schema-constrained content generation.
 
-The adapter:
+### Claude
 
-- sends the credential only in the provider authentication header;
-- requests JSON structured output using the Phoenix decision-memo schema;
-- normalizes provider output into the universal Office Companion response contract;
-- rejects provider failures, blocked responses, empty responses and invalid structured output;
-- does not log or persist the credential;
-- does not make Gemini the permanent default provider.
+```text
+ANTHROPIC_API_KEY=<deployment secret>
+CLAUDE_MODEL=<approved model>
+CLAUDE_API_BASE_URL=https://api.anthropic.com/v1
+CLAUDE_TIMEOUT_MS=60000
+ANTHROPIC_VERSION=2023-06-01
+```
 
-Real values belong only in a local untracked environment file or an approved deployment secret store. The repository contains `.env.example` with live execution disabled and an empty credential field.
+The adapter uses the Anthropic Messages API, forces one `create_microsoft_ready_draft` client tool, disables parallel tool use and validates the resulting `tool_use` input.
 
-## Controlled output workflow
+### ChatGPT
 
-The first end-to-end workflow produces a Microsoft-ready decision memo package containing artifact identity, draft status, decision requirement, management summary, options, recommendation, rationale, assumptions, open points, validation requirements, evidence status, excluded information, provider metadata and non-publication controls.
+```text
+OPENAI_API_KEY=<deployment secret>
+OPENAI_MODEL=<approved model>
+OPENAI_API_BASE_URL=https://api.openai.com/v1
+OPENAI_TIMEOUT_MS=60000
+```
 
-The provider generates only draft content. Phoenix adds governance fields such as owner placeholder, sensitivity, validation state, target system and publication boundary.
+The adapter uses the OpenAI Responses API, `Authorization: Bearer`, `store: false` and strict JSON-schema output through `text.format`.
 
-## Data gate
+## Shared workflow
+
+All adapters use one provider-neutral prompt builder and one Microsoft-ready draft schema. Providers generate draft content only. Phoenix adds governance fields including target system, sensitivity, validation state, human-review requirement, provider metadata and the non-publication boundary.
+
+The shared output includes:
+
+- decision memo identity and title;
+- management summary and decision requirement;
+- at least two options with benefits and risks;
+- recommendation and rationale;
+- assumptions, open points and internal validation requirements;
+- source/evidence status;
+- excluded-information record;
+- provider, model, request and trace metadata;
+- explicit unvalidated and non-publishing status.
+
+## Data and execution boundary
 
 | Class | Runtime behavior |
 |---|---|
-| GREEN | May be routed to an eligible operational provider |
-| YELLOW | Must be sanitized before routing |
-| RED | Rejected before any external provider call |
+| GREEN | May be processed by an eligible operational provider |
+| YELLOW | Must be explicitly sanitized before routing |
+| RED | Rejected before any provider network call |
 
-A provider credential never grants permission to process data.
+A provider credential never grants permission to process data. Human review remains mandatory. Silent fallback is prohibited. Microsoft Graph, SharePoint upload, Outlook send and Teams publication remain outside this gate.
 
-## Provider policy
+## Fair routing
 
-- Gemini: registered, reference adapter implemented, operational only after explicit enablement plus approved configuration
-- Claude: registered, adapter planned
-- ChatGPT: registered, adapter planned
-- permanent default: none
-- silent fallback: prohibited
-- fallback: only when policy permits and the selected change is disclosed
+Newly activated adapters start with neutral, unverified evidence. Equal top scores are resolved by a deterministic hash of the request ID. The same request remains stable while equal-score requests are distributed across eligible providers. This avoids a hidden alphabetical or vendor default.
 
-## Microsoft boundary
+## Evaluation framework
 
-Microsoft 365 remains the enterprise system of record for Outlook, Teams, SharePoint, OneDrive and approved Office artifacts. The current workflow produces a Microsoft-ready package but performs no Graph call, upload, send, approval or publication.
+Every successful controlled result can be evaluated across:
 
-A future Microsoft Graph connector requires separate tenant administration, scopes, security review and approval.
+- schema compliance — 25%;
+- governance compliance — 25%;
+- content completeness — 20%;
+- evidence compliance — 10%;
+- latency efficiency — 10%;
+- token efficiency — 10%;
+- provider reliability — observed, initially unweighted;
+- explicit error behavior — tested separately, initially unweighted.
+
+Schema, governance and required evidence failures are blocking. A high aggregate score cannot override a blocking failure. Production quality scores may be updated only from approved tests, staging evidence or permitted telemetry.
 
 ## Development and tests
 
@@ -107,43 +142,23 @@ npm run typecheck
 npm run acceptance:office
 npm run smoke:office-server
 npm run acceptance:office-gemini
+npm run acceptance:office-multi
 npm run build:office
 npm test
 ```
 
-The Gemini acceptance test uses a deterministic local mock. It checks explicit activation, authentication-header handling, structured-output configuration, RED-data rejection, human-review enforcement and Microsoft-ready packaging without calling a live provider or requiring a real secret.
-
-Run without a provider credential:
-
-```text
-npm run build:office
-npm run start:office
-```
-
-The server reports ready, while `/v1/complete` fails closed because no provider is operational.
-
-Run a credential-gated local proof:
-
-```text
-cp .env.example .env
-# Set OFFICE_COMPANION_ENABLE_LIVE_PROVIDER=true.
-# Add GEMINI_API_KEY and GEMINI_MODEL locally, then export the variables.
-npm run build:office
-npm run start:office
-```
-
-No `.env` file may be committed.
+CI uses deterministic local provider mocks and no production credentials. It verifies activation controls, authentication headers, secret isolation, structured output, identical Microsoft-ready package shape, RED/YELLOW policy rejection, human review, tie distribution, evaluation scoring, build and credential-free container behavior.
 
 ## Hosting
 
-- local development: Docker-compatible runtime
-- CI: GitHub Actions without provider credentials
-- first governed staging target: Azure Container Apps
-- secret target: Azure Key Vault or an approved equivalent
-- universal core: no Azure SDK or Gemini SDK dependency
+- local development: Docker-compatible runtime;
+- CI: GitHub Actions without provider secrets;
+- first governed staging target: Azure Container Apps;
+- secret target: Azure Key Vault or approved equivalent;
+- universal core: no provider SDK or Azure SDK dependency.
 
 ## Current gate
 
-The reference-adapter gate requires Billy ownership, all four Drive artifacts, canonical provider order, no permanent default, explicit live enablement, deployment-only credentials, pre-execution Data Gate enforcement, schema validation, Phoenix-owned governance metadata, mandatory human review and successful test/build/container evidence.
+The multi-provider gate passes when all five Drive artifacts are linked, all three adapters compile and pass deterministic tests, no provider is enabled by default, activation requires master switch plus allowlist plus complete provider configuration, structured output is validated, routing ties do not create a permanent default, governance metadata remains Phoenix-owned and no secret is persisted or exposed.
 
-The next delivery gate is one live sanitized Gemini staging proof using explicit enablement and an approved deployment secret. After that, Claude and ChatGPT adapters can be implemented against the same contracts.
+The next delivery gate is an approved GREEN-data staging proof for each provider, followed by evidence review and a separately governed Microsoft Graph connector design.
