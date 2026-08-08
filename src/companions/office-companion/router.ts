@@ -4,6 +4,7 @@ import type {
   OfficeRoutingDecision,
   OfficeTaskRequest,
 } from "./contracts.js";
+import { officeProviderIds } from "./contracts.js";
 
 export interface OfficeRoutingPolicy {
   allowFallback: boolean;
@@ -62,6 +63,19 @@ function normalizedScore(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+function providerOrder(providerId: OfficeProviderId): number {
+  return officeProviderIds.indexOf(providerId);
+}
+
+function deterministicIndex(seed: string, count: number): number {
+  let hash = 2_166_136_261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0) % count;
+}
+
 export function scoreOfficeProvider(
   provider: OfficeProviderDescriptor,
   policy: OfficeRoutingPolicy = defaultOfficeRoutingPolicy,
@@ -107,7 +121,7 @@ export function routeOfficeTask(
     .map((provider) => ({ provider, score: scoreOfficeProvider(provider, policy) }))
     .sort((left, right) => {
       if (right.score !== left.score) return right.score - left.score;
-      return left.provider.id.localeCompare(right.provider.id);
+      return providerOrder(left.provider.id) - providerOrder(right.provider.id);
     });
 
   const eligibleProviders = ranked.map(({ provider }) => provider.id);
@@ -119,7 +133,7 @@ export function routeOfficeTask(
     );
   }
 
-  let selected = ranked[0];
+  let selected = ranked[0]!;
   let reason = "Selected by policy, capability eligibility and current evidence scores.";
 
   if (request.preferredProvider) {
@@ -138,6 +152,17 @@ export function routeOfficeTask(
       );
     } else {
       reason = `Preferred provider ${request.preferredProvider} was ineligible; selected an explicit policy-compliant fallback.`;
+    }
+  } else {
+    const topScore = ranked[0]!.score;
+    const tiedTopProviders = ranked.filter(({ score }) => score === topScore);
+    if (tiedTopProviders.length > 1) {
+      selected =
+        tiedTopProviders[
+          deterministicIndex(request.requestId, tiedTopProviders.length)
+        ]!;
+      reason =
+        "Selected from equal-scoring providers by deterministic request distribution; no permanent default was applied.";
     }
   }
 

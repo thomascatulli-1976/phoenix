@@ -53,6 +53,7 @@ export interface OfficeCompletionResult {
     status: "completed";
     safetyStatus: "passed" | "warning";
     warnings: string[];
+    citationCount: number;
     usage?: {
       inputUnits?: number;
       outputUnits?: number;
@@ -187,6 +188,7 @@ export async function completeOfficeTask(
       safetyStatus:
         providerResponse.safetyStatus === "warning" ? "warning" : "passed",
       warnings: [...providerResponse.warnings],
+      citationCount: providerResponse.citations.length,
       usage: providerResponse.usage,
       traceId: providerResponse.traceId,
       generatedAt: providerResponse.generatedAt,
