@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.1",
+  "schemaVersion": "1.2",
   "companion": {
     "id": "phoenix-office-companion",
     "registryKey": "phx:companion:office-companion",
@@ -32,6 +32,11 @@
         "id": "PHX-COMP-OFFICE-004",
         "driveFileId": "1judeekl2lyh5LONT4Ad_wkhsf2Vqftq0A1pSVhzAilY",
         "title": "Gemini Reference Adapter and Controlled Output Workflow v1.0"
+      },
+      {
+        "id": "PHX-COMP-OFFICE-005",
+        "driveFileId": "1-Mf73aav4l7OCvjUXgF26s_bxqLJT5z8e0qkJkKmvPU",
+        "title": "Multi-Provider Adapter Expansion and Evaluation Framework v1.0"
       }
     ],
     "technicalRepository": "thomascatulli-1976/phoenix"
@@ -43,32 +48,44 @@
     "explicitProviderPreferenceAllowed": true,
     "fallbackAllowed": true,
     "silentFallbackAllowed": false,
+    "masterEnableEnvironmentVariable": "OFFICE_COMPANION_ENABLE_LIVE_PROVIDER",
+    "enabledProvidersEnvironmentVariable": "OFFICE_COMPANION_ENABLED_PROVIDERS",
     "providers": [
       {
         "id": "gemini",
         "displayName": "Gemini",
         "status": "registered",
-        "adapterState": "implemented-reference",
+        "adapterState": "implemented",
         "credentialRequired": true,
-        "enableEnvironmentVariable": "OFFICE_COMPANION_ENABLE_LIVE_PROVIDER",
         "credentialEnvironmentVariable": "GEMINI_API_KEY",
         "modelEnvironmentVariable": "GEMINI_MODEL",
+        "baseUrlEnvironmentVariable": "GEMINI_API_BASE_URL",
+        "timeoutEnvironmentVariable": "GEMINI_TIMEOUT_MS",
         "allowedDataClasses": ["green", "yellow-sanitized"]
       },
       {
         "id": "claude",
         "displayName": "Claude",
         "status": "registered",
-        "adapterState": "planned",
+        "adapterState": "implemented",
         "credentialRequired": true,
+        "credentialEnvironmentVariable": "ANTHROPIC_API_KEY",
+        "modelEnvironmentVariable": "CLAUDE_MODEL",
+        "baseUrlEnvironmentVariable": "CLAUDE_API_BASE_URL",
+        "timeoutEnvironmentVariable": "CLAUDE_TIMEOUT_MS",
+        "apiVersionEnvironmentVariable": "ANTHROPIC_VERSION",
         "allowedDataClasses": ["green", "yellow-sanitized"]
       },
       {
         "id": "chatgpt",
         "displayName": "ChatGPT",
         "status": "registered",
-        "adapterState": "planned",
+        "adapterState": "implemented",
         "credentialRequired": true,
+        "credentialEnvironmentVariable": "OPENAI_API_KEY",
+        "modelEnvironmentVariable": "OPENAI_MODEL",
+        "baseUrlEnvironmentVariable": "OPENAI_API_BASE_URL",
+        "timeoutEnvironmentVariable": "OPENAI_TIMEOUT_MS",
         "allowedDataClasses": ["green", "yellow-sanitized"]
       }
     ]
@@ -88,15 +105,42 @@
     ],
     "secretsLocation": "deployment-secret-store-only"
   },
-  "referenceWorkflow": {
+  "controlledWorkflow": {
     "id": "microsoft-ready-decision-memo-v1",
-    "provider": "gemini",
-    "providerRole": "reference-adapter-not-default",
+    "providers": ["gemini", "claude", "chatgpt"],
     "outputStatus": "Draft / Review Candidate",
     "targetSystem": "Microsoft Word / SharePoint",
     "validationState": "unvalidated",
     "humanReviewRequired": true,
     "autonomousPublication": false
+  },
+  "evaluationFramework": {
+    "dimensions": [
+      "schemaCompliance",
+      "governanceCompliance",
+      "contentCompleteness",
+      "evidenceCompliance",
+      "latencyEfficiency",
+      "tokenEfficiency",
+      "providerReliability",
+      "explicitErrorBehavior"
+    ],
+    "weights": {
+      "schemaCompliance": 0.25,
+      "governanceCompliance": 0.25,
+      "contentCompleteness": 0.2,
+      "evidenceCompliance": 0.1,
+      "latencyEfficiency": 0.1,
+      "tokenEfficiency": 0.1,
+      "providerReliability": 0,
+      "explicitErrorBehavior": 0
+    },
+    "blockingDimensions": [
+      "schemaCompliance",
+      "governanceCompliance",
+      "evidenceCompliance"
+    ],
+    "productionScoresMayBeInvented": false
   },
   "operatingModes": ["find", "think", "build", "validate", "publish"],
   "dataGate": {
@@ -112,5 +156,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "Run the first live sanitized Gemini staging proof with explicit enablement and an approved deployment secret, then implement Claude and ChatGPT adapters without changing the provider-neutral core."
+  "nextDeliverable": "Execute approved GREEN-data staging proofs for Gemini, Claude and ChatGPT, compare results through the evaluation framework, approve evidence updates and then design the separately governed Microsoft Graph connector."
 }
