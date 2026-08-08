@@ -51,6 +51,9 @@ export function createOfficeRuntimeProviderState(
 ): OfficeRuntimeProviderState {
   const environment = options.environment ?? process.env;
   const now = options.now ?? (() => new Date());
+  const enableValue = configured(
+    environment.OFFICE_COMPANION_ENABLE_LIVE_PROVIDER,
+  ).toLowerCase();
   const apiKey = configured(environment.GEMINI_API_KEY);
   const model = configured(environment.GEMINI_MODEL);
   const baseUrl = configured(environment.GEMINI_API_BASE_URL);
@@ -59,17 +62,30 @@ export function createOfficeRuntimeProviderState(
   const adapters = new Map<OfficeProviderId, OfficeProviderAdapter>();
   let providers = cloneRegisteredOfficeProviders();
 
+  if (!["", "false", "true"].includes(enableValue)) {
+    failures.push(
+      "OFFICE_COMPANION_ENABLE_LIVE_PROVIDER must be true, false or unset.",
+    );
+  }
   if (timeout.failure) failures.push(timeout.failure);
 
+  const liveProviderEnabled = enableValue === "true";
   const hasApiKey = apiKey.length > 0;
   const hasModel = model.length > 0;
-  if (hasApiKey !== hasModel) {
+
+  if (liveProviderEnabled && (!hasApiKey || !hasModel)) {
     failures.push(
-      "Gemini activation requires both GEMINI_API_KEY and GEMINI_MODEL.",
+      "Live Gemini activation requires both GEMINI_API_KEY and GEMINI_MODEL.",
     );
   }
 
-  if (hasApiKey && hasModel && failures.length === 0) {
+  if (!liveProviderEnabled && (hasApiKey || hasModel)) {
+    failures.push(
+      "Gemini credentials or model configuration are present, but OFFICE_COMPANION_ENABLE_LIVE_PROVIDER is not true.",
+    );
+  }
+
+  if (liveProviderEnabled && hasApiKey && hasModel && failures.length === 0) {
     const adapter = new GeminiOfficeAdapter({
       apiKey,
       model,
