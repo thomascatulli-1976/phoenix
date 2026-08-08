@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true,
+    "inlineSources": true,
+    "declaration": false
+  },
+  "include": ["src/companions/office-companion/**/*.ts"],
+  "exclude": ["src/companions/office-companion/fixtures/**"]
+}

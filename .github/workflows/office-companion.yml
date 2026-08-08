@@ -9,6 +9,9 @@ on:
       - "scripts/validate-office-companion.mjs"
       - "package.json"
       - "tsconfig.json"
+      - "tsconfig.build.json"
+      - "Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/office-companion.yml"
   push:
     branches:
@@ -20,6 +23,9 @@ on:
       - "scripts/validate-office-companion.mjs"
       - "package.json"
       - "tsconfig.json"
+      - "tsconfig.build.json"
+      - "Dockerfile"
+      - ".dockerignore"
       - ".github/workflows/office-companion.yml"
   workflow_dispatch:
 
@@ -27,9 +33,9 @@ permissions:
   contents: read
 
 jobs:
-  foundation-gate:
+  runtime-foundation-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -43,26 +49,72 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate governance and anchors
+      - name: Validate governance, anchors and hosting decision
         run: npm run validate:office
 
-      - name: Typecheck provider-neutral contracts
+      - name: Typecheck provider-neutral contracts and runtime
         run: npm run typecheck
 
-      - name: Run Office Companion acceptance suite
+      - name: Run Office Companion routing acceptance suite
         run: npm run acceptance:office
 
-      - name: Publish foundation summary
+      - name: Run stateless HTTP server smoke tests
+        run: npm run smoke:office-server
+
+      - name: Build production runtime
+        run: npm run build:office
+
+      - name: Build container image
+        run: docker build -t phoenix-office-companion:ci .
+
+      - name: Smoke test container health and readiness
+        shell: bash
+        run: |
+          set -eu
+          container_id="$(docker run -d -p 18080:8080 phoenix-office-companion:ci)"
+          cleanup() {
+            docker logs "$container_id" || true
+            docker rm -f "$container_id" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          attempts=0
+          until node -e "fetch('http://127.0.0.1:18080/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; do
+            attempts=$((attempts + 1))
+            if [ "$attempts" -ge 20 ]; then
+              echo "Container health endpoint did not become ready"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          node <<'NODE'
+          const response = await fetch('http://127.0.0.1:18080/ready');
+          const body = await response.json();
+          if (!response.ok) throw new Error(JSON.stringify(body));
+          if (body.status !== 'ready') throw new Error('Runtime did not report ready');
+          if (body.executiveOffice !== 'Billy') throw new Error('Billy ownership missing');
+          if (body.firstProductionTarget !== 'azure-container-apps') {
+            throw new Error('Azure Container Apps target missing');
+          }
+          if (body.liveProviderExecution !== false) {
+            throw new Error('Live provider execution must remain disabled');
+          }
+          console.log(JSON.stringify(body));
+          NODE
+
+      - name: Publish runtime foundation summary
         shell: bash
         run: |
           {
             echo "## Phoenix Office Companion"
             echo "- Executive Office: Billy"
-            echo "- Parent: Phoenix One / Phoenix Companion Runtime"
+            echo "- Runtime: stateless containerized HTTP service"
+            echo "- Development/CI: Docker-compatible runtime and GitHub Actions"
+            echo "- First production target: Azure Container Apps"
             echo "- Provider strategy: LLM-independent"
             echo "- Provider targets: Gemini, Claude, ChatGPT"
             echo "- Permanent default provider: none"
-            echo "- RED external routing: rejected by default"
-            echo "- Autonomous publication: disabled"
-            echo "- Foundation gate: passed"
+            echo "- Live provider execution: disabled"
+            echo "- Runtime foundation gate: passed"
           } >> "$GITHUB_STEP_SUMMARY"

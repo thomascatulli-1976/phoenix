@@ -12,6 +12,16 @@ Every material PHOENIX OS activity must record date/time, owner or agent, activi
 
 ## Entries
 
+### 2026-08-08 — Phoenix Office Companion runtime server gate initiated
+- **Owner / Agent:** Billy / PHOENIX Executive Office
+- **Activity:** Approved the first hosting decision and implemented the stateless Office Companion HTTP server, container definition, smoke tests and CI runtime gate.
+- **Affected artifacts / systems:** `PHX-COMP-OFFICE-003`; `config/office-companion.json`; `src/companions/office-companion/server.ts`; `Dockerfile`; Office Companion CI; branch `feat/office-companion-runtime-server`.
+- **Result / Status:** ACTIVE DEVELOPMENT — RUNTIME FOUNDATION. Local Docker-compatible execution and GitHub Actions are the development and acceptance environments; Azure Container Apps is the first governed production target.
+- **Decision:** The core remains portable and provider-neutral. Gemini, Claude and ChatGPT remain equal first-class targets. The runtime exposes health, readiness and policy-first routing only; live model execution and consequential external actions remain disabled.
+- **Open points:** CI evidence and merge remain pending. The Gemini reference adapter, provider credential, Microsoft-ready output package and human-approved end-to-end proof are not yet implemented.
+- **Errors / Blockers:** No production Azure environment, provider secret or enterprise connector has been provisioned. These are intentionally outside the runtime-foundation gate.
+- **Next step:** Pass the runtime and container CI gate, merge the server foundation, then implement the Gemini reference adapter without changing the provider-neutral architecture.
+
 ### 2026-08-08 — Phoenix Office Companion foundation initiated
 - **Owner / Agent:** Billy / PHOENIX Executive Office
 - **Activity:** Established the Phoenix Office Companion as a specialized companion workstream and created its canonical Drive and GitHub foundation.

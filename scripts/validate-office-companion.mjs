@@ -2,12 +2,18 @@ import fs from "node:fs";
 
 const configPath = "config/office-companion.json";
 const requiredFiles = [
+  "Dockerfile",
+  ".dockerignore",
+  "tsconfig.build.json",
   "docs/companions/office-companion/README.md",
   "src/companions/office-companion/contracts.ts",
   "src/companions/office-companion/provider-registry.ts",
   "src/companions/office-companion/router.ts",
+  "src/companions/office-companion/server.ts",
   "src/companions/office-companion/fixtures/acceptance-suite.ts",
   "src/companions/office-companion/fixtures/run-acceptance-suite.ts",
+  "src/companions/office-companion/fixtures/server-smoke.ts",
+  "src/companions/office-companion/fixtures/run-server-smoke.ts",
 ];
 
 const failures = [];
@@ -24,6 +30,7 @@ if (failures.length === 0) {
   const cfg = JSON.parse(fs.readFileSync(configPath, "utf8"));
   const companion = cfg.companion ?? {};
   const strategy = cfg.llmStrategy ?? {};
+  const hosting = cfg.runtimeHosting ?? {};
   const execution = cfg.executionPolicy ?? {};
   const dataGate = cfg.dataGate ?? {};
 
@@ -61,6 +68,7 @@ if (failures.length === 0) {
   const expectedArtifacts = new Map([
     ["PHX-COMP-OFFICE-001", "1Sge32CnSoPyB_PBT2EV1GBCUNCRjmgLDH0-LPpSmYXc"],
     ["PHX-COMP-OFFICE-002", "1QMTbTHmlzd7eKfkqHfJAHHAZvtEk5FpZNpH48SFnqJc"],
+    ["PHX-COMP-OFFICE-003", "14uQ9mabJupdvl4KMollPG2IHYgFEsuPnNyLhSrEqx14"],
   ]);
 
   for (const [id, driveFileId] of expectedArtifacts) {
@@ -105,6 +113,32 @@ if (failures.length === 0) {
     }
   }
 
+  if (hosting.mode !== "stateless-container") {
+    failures.push("Office Companion hosting mode must be stateless-container");
+  }
+  if (hosting.developmentRuntime !== "local-docker-compatible") {
+    failures.push("Office Companion development runtime must be Docker-compatible");
+  }
+  if (hosting.ciRuntime !== "github-actions") {
+    failures.push("Office Companion CI runtime must be GitHub Actions");
+  }
+  if (hosting.firstProductionTarget !== "azure-container-apps") {
+    failures.push("First production target must be Azure Container Apps");
+  }
+  if (hosting.portableContainerRuntime !== true) {
+    failures.push("The runtime must remain portable across compliant container platforms");
+  }
+  if (hosting.liveProviderExecution !== false) {
+    failures.push("Live provider execution must remain disabled in the server foundation");
+  }
+  const expectedEndpoints = ["GET /health", "GET /ready", "POST /v1/route"];
+  if (JSON.stringify(hosting.foundationEndpoints) !== JSON.stringify(expectedEndpoints)) {
+    failures.push("Foundation endpoints are invalid or incomplete");
+  }
+  if (hosting.secretsLocation !== "deployment-secret-store-only") {
+    failures.push("Secrets must remain in a deployment secret store only");
+  }
+
   if (dataGate.green !== "allowed-by-policy") {
     failures.push("GREEN data-gate policy is invalid");
   }
@@ -139,6 +173,17 @@ if (failures.length === 0) {
       failures.push(`Configuration must not contain secret field: ${field}`);
     }
   }
+
+  const dockerfile = fs.readFileSync("Dockerfile", "utf8");
+  if (!dockerfile.includes("USER phoenix")) {
+    failures.push("Runtime container must run as the non-root phoenix user");
+  }
+  if (!dockerfile.includes("HEALTHCHECK")) {
+    failures.push("Runtime container must define a health check");
+  }
+  if (!dockerfile.includes("dist/companions/office-companion/server.js")) {
+    failures.push("Runtime container entry point is invalid");
+  }
 }
 
 if (failures.length > 0) {
@@ -148,4 +193,6 @@ if (failures.length > 0) {
 }
 
 console.log("Phoenix Office Companion governance configuration is valid.");
-console.log("Validated Billy ownership, Drive anchors, provider neutrality and fail-closed execution.");
+console.log(
+  "Validated Billy ownership, Drive anchors, provider neutrality, stateless hosting and fail-closed execution.",
+);

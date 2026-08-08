@@ -22,6 +22,11 @@
         "id": "PHX-COMP-OFFICE-002",
         "driveFileId": "1QMTbTHmlzd7eKfkqHfJAHHAZvtEk5FpZNpH48SFnqJc",
         "title": "Provider-Neutral Runtime and Routing Architecture v1.0"
+      },
+      {
+        "id": "PHX-COMP-OFFICE-003",
+        "driveFileId": "14uQ9mabJupdvl4KMollPG2IHYgFEsuPnNyLhSrEqx14",
+        "title": "Runtime Hosting and MVP Deployment Decision v1.0"
       }
     ],
     "technicalRepository": "thomascatulli-1976/phoenix"
@@ -60,6 +65,16 @@
       }
     ]
   },
+  "runtimeHosting": {
+    "mode": "stateless-container",
+    "developmentRuntime": "local-docker-compatible",
+    "ciRuntime": "github-actions",
+    "firstProductionTarget": "azure-container-apps",
+    "portableContainerRuntime": true,
+    "liveProviderExecution": false,
+    "foundationEndpoints": ["GET /health", "GET /ready", "POST /v1/route"],
+    "secretsLocation": "deployment-secret-store-only"
+  },
   "operatingModes": ["find", "think", "build", "validate", "publish"],
   "dataGate": {
     "green": "allowed-by-policy",
@@ -74,5 +89,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "Implement and test the normalized provider interface and one sanitized end-to-end workflow with an explicit human approval gate."
+  "nextDeliverable": "Complete the stateless container runtime gate, then implement the Gemini reference adapter and one sanitized human-approved end-to-end workflow without creating a permanent provider default."
 }
