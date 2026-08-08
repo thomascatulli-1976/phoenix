@@ -118,8 +118,13 @@ function loadRuntimeState(environment: NodeJS.ProcessEnv): RuntimeState {
   if (config.runtimeHosting?.firstProductionTarget !== "azure-container-apps") {
     failures.push("The first production target must remain Azure Container Apps.");
   }
-  if (config.runtimeHosting?.liveProviderExecution !== "credential-gated") {
-    failures.push("Live provider execution must remain credential-gated.");
+  if (
+    config.runtimeHosting?.liveProviderExecution !==
+    "credential-and-explicit-enable-gated"
+  ) {
+    failures.push(
+      "Live provider execution must require explicit enablement and credentials.",
+    );
   }
 
   return { configPath, config, failures };
