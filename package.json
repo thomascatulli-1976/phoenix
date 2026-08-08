@@ -6,8 +6,10 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "validate:billy": "node scripts/validate-billy.mjs",
+    "validate:office": "node scripts/validate-office-companion.mjs",
     "acceptance:family": "tsx src/modules/family/fixtures/run-acceptance-suite.ts",
-    "test": "npm run validate:billy && npm run typecheck && npm run acceptance:family"
+    "acceptance:office": "tsx src/companions/office-companion/fixtures/run-acceptance-suite.ts",
+    "test": "npm run validate:billy && npm run validate:office && npm run typecheck && npm run acceptance:family && npm run acceptance:office"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",
