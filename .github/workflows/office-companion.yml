@@ -1,0 +1,68 @@
+name: Phoenix Office Companion
+
+on:
+  pull_request:
+    paths:
+      - "config/office-companion.json"
+      - "docs/companions/office-companion/**"
+      - "src/companions/office-companion/**"
+      - "scripts/validate-office-companion.mjs"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/office-companion.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "config/office-companion.json"
+      - "docs/companions/office-companion/**"
+      - "src/companions/office-companion/**"
+      - "scripts/validate-office-companion.mjs"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/office-companion.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  foundation-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate governance and anchors
+        run: npm run validate:office
+
+      - name: Typecheck provider-neutral contracts
+        run: npm run typecheck
+
+      - name: Run Office Companion acceptance suite
+        run: npm run acceptance:office
+
+      - name: Publish foundation summary
+        shell: bash
+        run: |
+          {
+            echo "## Phoenix Office Companion"
+            echo "- Executive Office: Billy"
+            echo "- Parent: Phoenix One / Phoenix Companion Runtime"
+            echo "- Provider strategy: LLM-independent"
+            echo "- Provider targets: Gemini, Claude, ChatGPT"
+            echo "- Permanent default provider: none"
+            echo "- RED external routing: rejected by default"
+            echo "- Autonomous publication: disabled"
+            echo "- Foundation gate: passed"
+          } >> "$GITHUB_STEP_SUMMARY"
