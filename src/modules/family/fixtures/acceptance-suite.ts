@@ -1,6 +1,8 @@
+import { assertPhoenixApprovalAcceptance } from "../../../platform/governance/approval-engine.test";
 import { assertFamilyAcceptance } from "./acceptance";
 import { assertCalendarAcceptance } from "./calendar-acceptance";
 import { assertChoreAcceptance } from "./chore-acceptance";
+import { assertIntegrationPortsAcceptance } from "./integration-ports-acceptance";
 import { assertInventoryAcceptance } from "./inventory-acceptance";
 import { assertKidsKitchenAcceptance } from "./kids-kitchen-acceptance";
 import { assertLearningAcceptance } from "./learning-acceptance";
@@ -24,6 +26,8 @@ const SUITES: Array<{ name: string; run: () => void }> = [
   { name: "leftovers", run: assertLeftoverAcceptance },
   { name: "chores", run: assertChoreAcceptance },
   { name: "operations-cockpit", run: assertOperationsAcceptance },
+  { name: "integration-ports", run: assertIntegrationPortsAcceptance },
+  { name: "governance-approval", run: assertPhoenixApprovalAcceptance },
 ];
 
 export const runPhoenixFamilyAcceptanceSuite = (): AcceptanceSuiteResult[] =>
