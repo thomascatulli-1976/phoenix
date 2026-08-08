@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0",
+  "companion": {
+    "id": "phoenix-office-companion",
+    "registryKey": "phx:companion:office-companion",
+    "name": "Phoenix Office Companion",
+    "technicalSlug": "office-companion",
+    "type": "specialized-companion",
+    "parentProduct": "Phoenix One",
+    "parentRuntime": "Phoenix Companion Runtime",
+    "executiveOffice": "Billy",
+    "status": "active-development",
+    "canonicalDriveRootId": "18sPNWzPn22YGDAgMcvJd_f_DSIUhgpLg",
+    "canonicalDriveFolderId": "11xgFf_OR6Q6DqvKeH0iDOFDDoW4dOP1z",
+    "canonicalArtifacts": [
+      {
+        "id": "PHX-COMP-OFFICE-001",
+        "driveFileId": "1Sge32CnSoPyB_PBT2EV1GBCUNCRjmgLDH0-LPpSmYXc",
+        "title": "Phoenix Office Companion System Definition v1.0"
+      },
+      {
+        "id": "PHX-COMP-OFFICE-002",
+        "driveFileId": "1QMTbTHmlzd7eKfkqHfJAHHAZvtEk5FpZNpH48SFnqJc",
+        "title": "Provider-Neutral Runtime and Routing Architecture v1.0"
+      }
+    ],
+    "technicalRepository": "thomascatulli-1976/phoenix"
+  },
+  "llmStrategy": {
+    "mode": "provider-neutral",
+    "selectionMode": "policy-capability-evidence",
+    "permanentDefaultProvider": null,
+    "explicitProviderPreferenceAllowed": true,
+    "fallbackAllowed": true,
+    "silentFallbackAllowed": false,
+    "providers": [
+      {
+        "id": "gemini",
+        "displayName": "Gemini",
+        "status": "registered",
+        "adapterState": "planned",
+        "credentialRequired": true,
+        "allowedDataClasses": ["green", "yellow-sanitized"]
+      },
+      {
+        "id": "claude",
+        "displayName": "Claude",
+        "status": "registered",
+        "adapterState": "planned",
+        "credentialRequired": true,
+        "allowedDataClasses": ["green", "yellow-sanitized"]
+      },
+      {
+        "id": "chatgpt",
+        "displayName": "ChatGPT",
+        "status": "registered",
+        "adapterState": "planned",
+        "credentialRequired": true,
+        "allowedDataClasses": ["green", "yellow-sanitized"]
+      }
+    ]
+  },
+  "operatingModes": ["find", "think", "build", "validate", "publish"],
+  "dataGate": {
+    "green": "allowed-by-policy",
+    "yellow": "requires-sanitization",
+    "red": "reject-external-provider-by-default"
+  },
+  "executionPolicy": {
+    "autonomousSending": false,
+    "autonomousPublishing": false,
+    "autonomousApproval": false,
+    "consequentialExternalActions": false,
+    "humanApprovalRequired": true,
+    "failClosed": true
+  },
+  "nextDeliverable": "Implement and test the normalized provider interface and one sanitized end-to-end workflow with an explicit human approval gate."
+}
