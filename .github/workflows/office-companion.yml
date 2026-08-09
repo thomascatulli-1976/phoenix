@@ -5,12 +5,14 @@ on:
     paths:
       - "config/office-companion.json"
       - "config/office-companion-evidence-review.json"
+      - "config/office-companion-human-review.json"
       - "docs/companions/office-companion/**"
       - "infra/office-companion/staging/**"
       - "src/companions/office-companion/**"
       - "scripts/validate-office-companion.mjs"
       - "scripts/validate-office-staging.mjs"
       - "scripts/validate-office-evidence-review.mjs"
+      - "scripts/validate-office-human-review.mjs"
       - "package.json"
       - "tsconfig.json"
       - "tsconfig.build.json"
@@ -26,12 +28,14 @@ on:
     paths:
       - "config/office-companion.json"
       - "config/office-companion-evidence-review.json"
+      - "config/office-companion-human-review.json"
       - "docs/companions/office-companion/**"
       - "infra/office-companion/staging/**"
       - "src/companions/office-companion/**"
       - "scripts/validate-office-companion.mjs"
       - "scripts/validate-office-staging.mjs"
       - "scripts/validate-office-evidence-review.mjs"
+      - "scripts/validate-office-human-review.mjs"
       - "package.json"
       - "tsconfig.json"
       - "tsconfig.build.json"
@@ -72,6 +76,9 @@ jobs:
       - name: Validate provider evidence review gate
         run: npm run validate:office-evidence-review
 
+      - name: Validate human review promotion gate
+        run: npm run validate:office-human-review
+
       - name: Typecheck provider-neutral runtime and staging proof runner
         run: npm run typecheck
 
@@ -92,6 +99,9 @@ jobs:
 
       - name: Run evidence review acceptance
         run: npm run acceptance:office-evidence-review
+
+      - name: Run human review record acceptance
+        run: npm run acceptance:office-human-review
 
       - name: Build production runtime
         run: npm run build:office
@@ -147,7 +157,9 @@ jobs:
             echo "- Provider secrets: Azure Key Vault references"
             echo "- Proof data class: GREEN"
             echo "- Evidence review gate: PHX-COMP-OFFICE-008"
+            echo "- Human decision record: PHX-COMP-OFFICE-009"
             echo "- Automated promotion: prohibited"
+            echo "- Routing score mutation by review record: prohibited"
             echo "- Pull-request deployment: disabled"
             echo "- Microsoft Graph writes: disabled"
             echo "- Staging foundation gate: passed"
