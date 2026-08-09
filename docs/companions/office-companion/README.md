@@ -1,6 +1,6 @@
 # Phoenix Office Companion
 
-**Status:** Active development — multi-provider adapter gate  
+**Status:** Active development — governed staging foundation  
 **Executive Office:** Billy  
 **Parent product:** Phoenix One  
 **Parent runtime:** Phoenix Companion Runtime  
@@ -9,9 +9,9 @@
 
 ## Purpose
 
-The Phoenix Office Companion is a governed knowledge-work companion inside Phoenix One. Its core remains LLM-independent. Gemini, Claude and ChatGPT implement the same provider-neutral request, response, routing and Microsoft-ready output contracts.
+The Phoenix Office Companion is a governed knowledge-work companion inside Phoenix One. Its universal core is LLM-independent. Gemini, Claude and ChatGPT implement the same request, response, routing, controlled-output and evaluation contracts.
 
-No provider is a permanent default. Selection is governed by data policy, capability, current evidence and an eligible explicit user preference.
+No provider is a permanent default. Selection is governed by data policy, capability, approved evidence and an eligible explicit preference. Silent fallback is prohibited.
 
 ## Canonical artifacts
 
@@ -22,8 +22,9 @@ Drive is authoritative for approved business, governance and architecture specif
 - `PHX-COMP-OFFICE-003` — Runtime Hosting and MVP Deployment Decision v1.0
 - `PHX-COMP-OFFICE-004` — Gemini Reference Adapter and Controlled Output Workflow v1.0
 - `PHX-COMP-OFFICE-005` — Multi-Provider Adapter Expansion and Evaluation Framework v1.0
+- `PHX-COMP-OFFICE-006` — Governed Staging Deployment and Provider Evidence Protocol v1.0
 
-GitHub is authoritative for executable implementation, configuration, tests, container definition and CI evidence.
+GitHub is authoritative for executable implementation, configuration, tests, infrastructure definitions, container images and CI evidence.
 
 ## Runtime API
 
@@ -38,21 +39,14 @@ The completion endpoint returns a `Draft / Review Candidate` with `validationSta
 
 ## Provider activation
 
-The master control is:
+Live execution requires the master switch and an explicit provider allowlist:
 
 ```text
 OFFICE_COMPANION_ENABLE_LIVE_PROVIDER=true
-```
-
-The independent provider allowlist is:
-
-```text
 OFFICE_COMPANION_ENABLED_PROVIDERS=gemini,claude,chatgpt
 ```
 
-When the master control is true and the allowlist is omitted, only Gemini is enabled for backward compatibility with the reference-adapter stage. This is not a routing default.
-
-Every enabled provider requires both its credential and model. Credentials or model configuration for a provider outside the allowlist cause a fail-closed readiness error. Unknown and duplicate provider IDs also fail readiness.
+Every enabled provider requires its deployment credential and model. Unknown IDs, duplicates, incomplete enabled-provider configuration and credential residue for disabled providers fail readiness.
 
 ### Gemini
 
@@ -62,8 +56,6 @@ GEMINI_MODEL=<approved model>
 GEMINI_API_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 GEMINI_TIMEOUT_MS=60000
 ```
-
-The adapter uses `x-goog-api-key` and JSON-schema-constrained content generation.
 
 ### Claude
 
@@ -75,8 +67,6 @@ CLAUDE_TIMEOUT_MS=60000
 ANTHROPIC_VERSION=2023-06-01
 ```
 
-The adapter uses the Anthropic Messages API, forces one `create_microsoft_ready_draft` client tool, disables parallel tool use and validates the resulting `tool_use` input.
-
 ### ChatGPT
 
 ```text
@@ -86,23 +76,13 @@ OPENAI_API_BASE_URL=https://api.openai.com/v1
 OPENAI_TIMEOUT_MS=60000
 ```
 
-The adapter uses the OpenAI Responses API, `Authorization: Bearer`, `store: false` and strict JSON-schema output through `text.format`.
+Provider-specific credentials, model names, transports and error formats remain isolated inside adapters.
 
-## Shared workflow
+## Shared Microsoft-ready workflow
 
-All adapters use one provider-neutral prompt builder and one Microsoft-ready draft schema. Providers generate draft content only. Phoenix adds governance fields including target system, sensitivity, validation state, human-review requirement, provider metadata and the non-publication boundary.
+All adapters use one provider-neutral prompt builder and one draft schema. The provider generates content only. Phoenix adds target system, sensitivity, validation state, human-review requirement, provider metadata and the non-publication boundary.
 
-The shared output includes:
-
-- decision memo identity and title;
-- management summary and decision requirement;
-- at least two options with benefits and risks;
-- recommendation and rationale;
-- assumptions, open points and internal validation requirements;
-- source/evidence status;
-- excluded-information record;
-- provider, model, request and trace metadata;
-- explicit unvalidated and non-publishing status.
+The shared package contains a management summary, decision requirement, at least two options, recommendation, rationale, assumptions, open points, internal validation requirements, evidence status, excluded-information record and trace metadata.
 
 ## Data and execution boundary
 
@@ -112,53 +92,108 @@ The shared output includes:
 | YELLOW | Must be explicitly sanitized before routing |
 | RED | Rejected before any provider network call |
 
-A provider credential never grants permission to process data. Human review remains mandatory. Silent fallback is prohibited. Microsoft Graph, SharePoint upload, Outlook send and Teams publication remain outside this gate.
+The first live staging protocol is intentionally GREEN-only. A provider credential never grants permission to process data. Human review remains mandatory. Microsoft Graph, SharePoint upload, Outlook send and Teams publication remain outside the current gate.
 
-## Fair routing
+## Fair routing and evaluation
 
-Newly activated adapters start with neutral, unverified evidence. Equal top scores are resolved by a deterministic hash of the request ID. The same request remains stable while equal-score requests are distributed across eligible providers. This avoids a hidden alphabetical or vendor default.
+Newly activated adapters begin with neutral, unverified evidence. Equal top scores are resolved by a deterministic hash of the request ID, keeping one request stable while distributing equal-score requests across providers.
 
-## Evaluation framework
+Controlled results can be evaluated across schema compliance, governance compliance, content completeness, evidence compliance, latency, token efficiency, reliability and explicit error behavior. Schema, governance and required-evidence failures are blocking. Repository configuration does not invent production quality scores.
 
-Every successful controlled result can be evaluated across:
+## Governed staging target
 
-- schema compliance — 25%;
-- governance compliance — 25%;
-- content completeness — 20%;
-- evidence compliance — 10%;
-- latency efficiency — 10%;
-- token efficiency — 10%;
-- provider reliability — observed, initially unweighted;
-- explicit error behavior — tested separately, initially unweighted.
+The prepared staging target is Azure Container Apps. Nothing is provisioned automatically by a pull request or ordinary push.
 
-Schema, governance and required evidence failures are blocking. A high aggregate score cannot override a blocking failure. Production quality scores may be updated only from approved tests, staging evidence or permitted telemetry.
+The staging foundation includes:
+
+- Azure Container Registry with admin authentication disabled;
+- a user-assigned managed identity;
+- `AcrPull` and `Key Vault Secrets User` role assignments;
+- an existing approved Azure Key Vault with versionless provider secret references;
+- Log Analytics and an Azure Container Apps managed environment;
+- Git-SHA-tagged application images;
+- startup and liveness probes on `/health`;
+- readiness probe on `/ready`;
+- multiple revision mode for controlled rollback.
+
+Infrastructure entry point:
+
+```text
+infra/office-companion/staging/main.bicep
+```
+
+## Manual deployment gate
+
+Live staging is available only through:
+
+```text
+.github/workflows/office-companion-staging.yml
+```
+
+The workflow:
+
+1. is `workflow_dispatch` only;
+2. requires the protected GitHub environment `office-companion-staging`;
+3. requires the explicit `DEPLOY` confirmation input;
+4. authenticates to Azure with GitHub OIDC;
+5. deploys the foundation;
+6. builds an immutable Git-SHA image in Azure Container Registry;
+7. deploys the Container App revision using managed identity and Key Vault references;
+8. verifies health and readiness;
+9. executes one fixed GREEN-data proof per selected provider;
+10. uploads an evidence package for human review.
+
+Provider secret values never enter GitHub workflow inputs, Bicep parameter files or evidence output.
+
+## Staging evidence package
+
+The evidence runner is:
+
+```text
+src/companions/office-companion/staging/run-staging-proof.ts
+```
+
+For each explicitly selected provider it sends the same synthetic GREEN scenario with fallback disabled and writes:
+
+- sanitized request;
+- normalized response;
+- provider evaluation;
+- health and readiness metadata;
+- JSON and Markdown summaries.
+
+Evidence is a review candidate, not an automatic routing-score update. Promotion into canonical records requires human review.
+
+## Required staging administration
+
+Before a live workflow can run, an authorized administrator must configure:
+
+- Azure subscription and resource-group authority;
+- a federated GitHub Actions identity;
+- the protected GitHub environment and reviewer rules;
+- Azure Key Vault coordinates;
+- provider secret names and approved model identifiers;
+- an accepted location and globally unique registry name.
+
+These values are deployment administration, not repository content.
 
 ## Development and tests
 
 ```text
 npm install --no-audit --no-fund
 npm run validate:office
+npm run validate:office-staging
 npm run typecheck
 npm run acceptance:office
 npm run smoke:office-server
 npm run acceptance:office-gemini
 npm run acceptance:office-multi
+npm run acceptance:office-staging
 npm run build:office
 npm test
 ```
 
-CI uses deterministic local provider mocks and no production credentials. It verifies activation controls, authentication headers, secret isolation, structured output, identical Microsoft-ready package shape, RED/YELLOW policy rejection, human review, tie distribution, evaluation scoring, build and credential-free container behavior.
-
-## Hosting
-
-- local development: Docker-compatible runtime;
-- CI: GitHub Actions without provider secrets;
-- first governed staging target: Azure Container Apps;
-- secret target: Azure Key Vault or approved equivalent;
-- universal core: no provider SDK or Azure SDK dependency.
+Pull-request CI uses deterministic local provider and staging mocks. It requires no Azure account and no provider credential.
 
 ## Current gate
 
-The multi-provider gate passes when all five Drive artifacts are linked, all three adapters compile and pass deterministic tests, no provider is enabled by default, activation requires master switch plus allowlist plus complete provider configuration, structured output is validated, routing ties do not create a permanent default, governance metadata remains Phoenix-owned and no secret is persisted or exposed.
-
-The next delivery gate is an approved GREEN-data staging proof for each provider, followed by evidence review and a separately governed Microsoft Graph connector design.
+The repository now contains the staging infrastructure and proof machinery, but no Azure resources or real provider evidence are claimed. The next external gate is to provide the protected Azure/OIDC/Key-Vault prerequisites and execute one approved GREEN-data proof for Gemini, Claude and ChatGPT. Evidence must be reviewed before provider scores change or a Microsoft Graph connector gate opens.

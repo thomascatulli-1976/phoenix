@@ -1,0 +1,314 @@
+name: Phoenix Office Companion Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: Type DEPLOY through the choice control to authorize a staging deployment.
+        required: true
+        type: choice
+        default: "NO"
+        options:
+          - "NO"
+          - "DEPLOY"
+      enabled_providers:
+        description: Comma-separated canonical provider list.
+        required: true
+        type: string
+        default: gemini,claude,chatgpt
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: office-companion-staging
+  cancel-in-progress: false
+
+env:
+  AZURE_CORE_OUTPUT: none
+
+jobs:
+  deploy-and-prove:
+    if: ${{ inputs.confirm_deploy == 'DEPLOY' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: office-companion-staging
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.OFFICE_STAGING_RESOURCE_GROUP }}
+      AZURE_LOCATION: ${{ vars.OFFICE_STAGING_LOCATION }}
+      OFFICE_NAME_PREFIX: ${{ vars.OFFICE_STAGING_NAME_PREFIX }}
+      AZURE_ACR_NAME: ${{ vars.OFFICE_STAGING_ACR_NAME }}
+      KEY_VAULT_SUBSCRIPTION_ID: ${{ vars.OFFICE_STAGING_KEY_VAULT_SUBSCRIPTION_ID }}
+      KEY_VAULT_RESOURCE_GROUP: ${{ vars.OFFICE_STAGING_KEY_VAULT_RESOURCE_GROUP }}
+      KEY_VAULT_NAME: ${{ vars.OFFICE_STAGING_KEY_VAULT_NAME }}
+      GEMINI_MODEL_VALUE: ${{ vars.OFFICE_STAGING_GEMINI_MODEL }}
+      GEMINI_SECRET_NAME: ${{ vars.OFFICE_STAGING_GEMINI_SECRET_NAME }}
+      CLAUDE_MODEL_VALUE: ${{ vars.OFFICE_STAGING_CLAUDE_MODEL }}
+      CLAUDE_SECRET_NAME: ${{ vars.OFFICE_STAGING_CLAUDE_SECRET_NAME }}
+      OPENAI_MODEL_VALUE: ${{ vars.OFFICE_STAGING_OPENAI_MODEL }}
+      OPENAI_SECRET_NAME: ${{ vars.OFFICE_STAGING_OPENAI_SECRET_NAME }}
+      DEPLOYMENT_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run repository and staging gates
+        run: npm test
+
+      - name: Normalize providers and create non-secret parameter files
+        id: staging-config
+        env:
+          RAW_PROVIDERS: ${{ inputs.enabled_providers }}
+        shell: bash
+        run: |
+          set -eu
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const canonical = ['gemini', 'claude', 'chatgpt'];
+          const raw = (process.env.RAW_PROVIDERS || '')
+            .split(',')
+            .map((entry) => entry.trim().toLowerCase())
+            .filter(Boolean);
+
+          if (raw.length === 0) throw new Error('At least one provider is required.');
+          if (new Set(raw).size !== raw.length) throw new Error('Provider list contains duplicates.');
+          for (const provider of raw) {
+            if (!canonical.includes(provider)) throw new Error(`Unknown provider: ${provider}`);
+          }
+          const providers = canonical.filter((provider) => raw.includes(provider));
+
+          const required = (name, value) => {
+            if (!value || !value.trim()) throw new Error(`Missing required staging configuration: ${name}`);
+            return value.trim();
+          };
+
+          const resourceGroup = required('OFFICE_STAGING_RESOURCE_GROUP', process.env.AZURE_RESOURCE_GROUP);
+          const location = required('OFFICE_STAGING_LOCATION', process.env.AZURE_LOCATION);
+          const namePrefix = required('OFFICE_STAGING_NAME_PREFIX', process.env.OFFICE_NAME_PREFIX);
+          const acrName = required('OFFICE_STAGING_ACR_NAME', process.env.AZURE_ACR_NAME);
+          const deploymentSubscriptionId = required('AZURE_SUBSCRIPTION_ID', process.env.DEPLOYMENT_SUBSCRIPTION_ID);
+          const keyVaultSubscriptionId =
+            (process.env.KEY_VAULT_SUBSCRIPTION_ID || '').trim() || deploymentSubscriptionId;
+          const keyVaultResourceGroupName = required(
+            'OFFICE_STAGING_KEY_VAULT_RESOURCE_GROUP',
+            process.env.KEY_VAULT_RESOURCE_GROUP,
+          );
+          const keyVaultName = required(
+            'OFFICE_STAGING_KEY_VAULT_NAME',
+            process.env.KEY_VAULT_NAME,
+          );
+
+          const providerConfiguration = {
+            gemini: {
+              model: process.env.GEMINI_MODEL_VALUE,
+              secretName: process.env.GEMINI_SECRET_NAME,
+            },
+            claude: {
+              model: process.env.CLAUDE_MODEL_VALUE,
+              secretName: process.env.CLAUDE_SECRET_NAME,
+            },
+            chatgpt: {
+              model: process.env.OPENAI_MODEL_VALUE,
+              secretName: process.env.OPENAI_SECRET_NAME,
+            },
+          };
+
+          for (const provider of providers) {
+            required(`${provider} model`, providerConfiguration[provider].model);
+            required(`${provider} Key Vault secret name`, providerConfiguration[provider].secretName);
+          }
+
+          const image = `${acrName}.azurecr.io/phoenix-office-companion:${process.env.GITHUB_SHA}`;
+          const common = {
+            location,
+            namePrefix,
+            acrName,
+            enabledProviders: providers,
+            keyVaultSubscriptionId,
+            keyVaultResourceGroupName,
+            keyVaultName,
+            geminiModel: providerConfiguration.gemini.model || '',
+            geminiSecretName: providerConfiguration.gemini.secretName || '',
+            claudeModel: providerConfiguration.claude.model || '',
+            claudeSecretName: providerConfiguration.claude.secretName || '',
+            openAiModel: providerConfiguration.chatgpt.model || '',
+            openAiSecretName: providerConfiguration.chatgpt.secretName || '',
+          };
+
+          const parameters = (deployContainerApp, containerImage) => ({
+            $schema:
+              'https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#',
+            contentVersion: '1.0.0.0',
+            parameters: Object.fromEntries(
+              Object.entries({ ...common, deployContainerApp, containerImage }).map(
+                ([key, value]) => [key, { value }],
+              ),
+            ),
+          });
+
+          const foundationPath = path.join(
+            process.env.RUNNER_TEMP,
+            'office-staging-foundation.parameters.json',
+          );
+          const applicationPath = path.join(
+            process.env.RUNNER_TEMP,
+            'office-staging-application.parameters.json',
+          );
+          fs.writeFileSync(foundationPath, JSON.stringify(parameters(false, ''), null, 2));
+          fs.writeFileSync(applicationPath, JSON.stringify(parameters(true, image), null, 2));
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            [
+              `providers_csv=${providers.join(',')}`,
+              `providers_json=${JSON.stringify(providers)}`,
+              `resource_group=${resourceGroup}`,
+              `container_app_name=${namePrefix}-office`,
+              `image=${image}`,
+              `foundation_parameters=${foundationPath}`,
+              `application_parameters=${applicationPath}`,
+            ].join('\n') + '\n',
+          );
+          NODE
+
+      - name: Azure login with OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create or update staging resource group
+        shell: bash
+        run: |
+          set -eu
+          az group create \
+            --name "${{ steps.staging-config.outputs.resource_group }}" \
+            --location "$AZURE_LOCATION" \
+            --only-show-errors >/dev/null
+
+      - name: Validate Bicep and deploy foundation
+        shell: bash
+        run: |
+          set -eu
+          az bicep install >/dev/null
+          az bicep build \
+            --file infra/office-companion/staging/main.bicep \
+            --stdout >/dev/null
+          az deployment group create \
+            --name "office-staging-foundation-${GITHUB_RUN_ID}" \
+            --resource-group "${{ steps.staging-config.outputs.resource_group }}" \
+            --template-file infra/office-companion/staging/main.bicep \
+            --parameters @"${{ steps.staging-config.outputs.foundation_parameters }}" \
+            --only-show-errors >/dev/null
+
+      - name: Build immutable image in Azure Container Registry
+        shell: bash
+        run: |
+          set -eu
+          az acr build \
+            --registry "$AZURE_ACR_NAME" \
+            --image "phoenix-office-companion:${GITHUB_SHA}" \
+            --file Dockerfile \
+            --only-show-errors \
+            . >/dev/null
+
+      - name: Deploy Container App revision
+        shell: bash
+        run: |
+          set -eu
+          az deployment group create \
+            --name "office-staging-app-${GITHUB_RUN_ID}" \
+            --resource-group "${{ steps.staging-config.outputs.resource_group }}" \
+            --template-file infra/office-companion/staging/main.bicep \
+            --parameters @"${{ steps.staging-config.outputs.application_parameters }}" \
+            --only-show-errors >/dev/null
+
+      - name: Resolve and verify staging endpoint
+        id: endpoint
+        env:
+          EXPECTED_PROVIDERS: ${{ steps.staging-config.outputs.providers_json }}
+        shell: bash
+        run: |
+          set -eu
+          fqdn="$(az containerapp show \
+            --resource-group "${{ steps.staging-config.outputs.resource_group }}" \
+            --name "${{ steps.staging-config.outputs.container_app_name }}" \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv \
+            --only-show-errors)"
+          test -n "$fqdn"
+          base_url="https://${fqdn}"
+          echo "base_url=$base_url" >> "$GITHUB_OUTPUT"
+
+          attempts=0
+          until BASE_URL="$base_url" node -e "fetch(process.env.BASE_URL + '/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"; do
+            attempts=$((attempts + 1))
+            if [ "$attempts" -ge 60 ]; then
+              echo "Staging health endpoint did not become ready"
+              exit 1
+            fi
+            sleep 5
+          done
+
+          BASE_URL="$base_url" node <<'NODE'
+          const response = await fetch(process.env.BASE_URL + '/ready');
+          const body = await response.json();
+          if (!response.ok || body.status !== 'ready') {
+            throw new Error(`Readiness failed: ${JSON.stringify(body)}`);
+          }
+          const expected = JSON.parse(process.env.EXPECTED_PROVIDERS || '[]');
+          const operational = body.operationalProviders || [];
+          for (const provider of expected) {
+            if (!operational.includes(provider)) {
+              throw new Error(`Expected provider is not operational: ${provider}`);
+            }
+          }
+          NODE
+
+      - name: Run GREEN-data provider proofs
+        env:
+          OFFICE_COMPANION_BASE_URL: ${{ steps.endpoint.outputs.base_url }}
+          OFFICE_COMPANION_PROOF_PROVIDERS: ${{ steps.staging-config.outputs.providers_csv }}
+          OFFICE_COMPANION_EVIDENCE_DIR: artifacts/office-staging-evidence
+          OFFICE_COMPANION_ENVIRONMENT_NAME: office-companion-staging
+        run: npm run staging:office-proof
+
+      - name: Upload reviewed evidence candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: office-companion-staging-evidence-${{ github.sha }}
+          path: artifacts/office-staging-evidence
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish staging summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Phoenix Office Companion staging"
+            echo "- Executive Office: Billy"
+            echo "- Commit image: ${{ steps.staging-config.outputs.image }}"
+            echo "- Providers: ${{ steps.staging-config.outputs.providers_csv }}"
+            echo "- Data class: GREEN"
+            echo "- Fallback: disabled per proof"
+            echo "- Evidence: workflow artifact, pending human review"
+            echo "- Microsoft Graph writes: disabled"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Azure logout
+        if: always()
+        run: az logout
