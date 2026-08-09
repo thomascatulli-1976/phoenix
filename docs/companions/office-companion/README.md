@@ -1,6 +1,6 @@
 # Phoenix Office Companion
 
-**Status:** Active development — governed staging foundation  
+**Status:** Active development — staging administration handoff  
 **Executive Office:** Billy  
 **Parent product:** Phoenix One  
 **Parent runtime:** Phoenix Companion Runtime  
@@ -23,6 +23,7 @@ Drive is authoritative for approved business, governance and architecture specif
 - `PHX-COMP-OFFICE-004` — Gemini Reference Adapter and Controlled Output Workflow v1.0
 - `PHX-COMP-OFFICE-005` — Multi-Provider Adapter Expansion and Evaluation Framework v1.0
 - `PHX-COMP-OFFICE-006` — Governed Staging Deployment and Provider Evidence Protocol v1.0
+- `PHX-COMP-OFFICE-007` — Staging Administration Handoff and Live Proof Runbook v1.0
 
 GitHub is authoritative for executable implementation, configuration, tests, infrastructure definitions, container images and CI evidence.
 
@@ -163,18 +164,28 @@ For each explicitly selected provider it sends the same synthetic GREEN scenario
 
 Evidence is a review candidate, not an automatic routing-score update. Promotion into canonical records requires human review.
 
-## Required staging administration
+## Staging administration handoff
+
+The canonical operational runbook is `PHX-COMP-OFFICE-007`. The repository summary is:
+
+```text
+docs/companions/office-companion/STAGING-ADMIN-HANDOFF.md
+```
 
 Before a live workflow can run, an authorized administrator must configure:
 
-- Azure subscription and resource-group authority;
-- a federated GitHub Actions identity;
-- the protected GitHub environment and reviewer rules;
-- Azure Key Vault coordinates;
-- provider secret names and approved model identifiers;
+- protected GitHub environment `office-companion-staging` and required reviewers;
+- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID` as environment secrets;
+- GitHub-to-Azure OIDC federation matching the active environment subject;
+- Azure resource and `Microsoft.Authorization/roleAssignments/write` permissions at the required scopes;
+- Azure Key Vault coordinates and provider secret names;
+- provider API keys inside Key Vault only;
+- approved model identifiers;
 - an accepted location and globally unique registry name.
 
-These values are deployment administration, not repository content.
+The expected immutable GitHub environment subject for the current repository metadata is recorded in the runbook, but the Azure administrator must verify the active repository OIDC subject before creating the federated credential.
+
+These values are deployment administration, not repository content. Until they exist, the staging status remains `prepared-not-provisioned` and the live-proof status remains `not-executed`.
 
 ## Development and tests
 
@@ -196,4 +207,4 @@ Pull-request CI uses deterministic local provider and staging mocks. It requires
 
 ## Current gate
 
-The repository now contains the staging infrastructure and proof machinery, but no Azure resources or real provider evidence are claimed. The next external gate is to provide the protected Azure/OIDC/Key-Vault prerequisites and execute one approved GREEN-data proof for Gemini, Claude and ChatGPT. Evidence must be reviewed before provider scores change or a Microsoft Graph connector gate opens.
+The repository contains the staging infrastructure, proof machinery and administration runbook, but no Azure resources or real provider evidence are claimed. The next external gate is to complete `PHX-COMP-OFFICE-007`, execute one approved GREEN-data proof for Gemini, Claude and ChatGPT, and review the evidence before provider scores change or a Microsoft Graph connector gate opens.
