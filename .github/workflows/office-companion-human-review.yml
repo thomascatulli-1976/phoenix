@@ -1,0 +1,146 @@
+name: Phoenix Office Companion Human Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: GitHub Actions run ID that produced the Office Companion staging evidence artifact.
+        required: true
+        type: string
+      decision:
+        description: Human review decision.
+        required: true
+        type: choice
+        options:
+          - PASS
+          - PASS WITH CONDITIONS
+          - REJECTED
+      rationale:
+        description: Reviewer rationale. Do not include secrets or confidential data.
+        required: true
+        type: string
+      conditions:
+        description: Pipe-separated conditions. Required only for PASS WITH CONDITIONS.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: office-companion-human-review-${{ inputs.source_run_id }}
+  cancel-in-progress: false
+
+jobs:
+  record-human-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: office-companion-staging
+
+    steps:
+      - name: Validate workflow inputs
+        shell: bash
+        env:
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          DECISION: ${{ inputs.decision }}
+          RATIONALE: ${{ inputs.rationale }}
+          CONDITIONS: ${{ inputs.conditions }}
+        run: |
+          set -eu
+          case "$SOURCE_RUN_ID" in
+            ''|*[!0-9]*) echo "source_run_id must be a numeric GitHub Actions run ID"; exit 1 ;;
+          esac
+          test -n "$(printf '%s' "$RATIONALE" | tr -d '[:space:]')"
+          if [ "$DECISION" = "PASS WITH CONDITIONS" ]; then
+            test -n "$(printf '%s' "$CONDITIONS" | tr -d '[:space:]')" || {
+              echo "PASS WITH CONDITIONS requires at least one condition"
+              exit 1
+            }
+          elif [ -n "$(printf '%s' "$CONDITIONS" | tr -d '[:space:]')" ]; then
+            echo "Conditions are only valid for PASS WITH CONDITIONS"
+            exit 1
+          fi
+
+      - name: Checkout current reviewed governance code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run PHX-009 governance and acceptance gates
+        run: |
+          npm run validate:office-human-review
+          npm run acceptance:office-human-review
+
+      - name: Download source staging evidence
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+          pattern: office-companion-staging-evidence-*
+          path: artifacts/office-staging-evidence
+          merge-multiple: true
+
+      - name: Verify source evidence remains eligible
+        env:
+          OFFICE_COMPANION_EVIDENCE_DIR: artifacts/office-staging-evidence
+        run: npm run staging:office-review-evidence
+
+      - name: Record explicit human decision
+        env:
+          OFFICE_COMPANION_EVIDENCE_DIR: artifacts/office-staging-evidence
+          OFFICE_COMPANION_REVIEWER: ${{ github.actor }}
+          OFFICE_COMPANION_REVIEW_DECISION: ${{ inputs.decision }}
+          OFFICE_COMPANION_REVIEW_RATIONALE: ${{ inputs.rationale }}
+          OFFICE_COMPANION_REVIEW_CONDITIONS: ${{ inputs.conditions }}
+        run: npm run staging:office-record-review
+
+      - name: Verify recorded boundary
+        shell: bash
+        run: |
+          set -eu
+          node <<'NODE'
+          const fs = require('node:fs');
+          const file = 'artifacts/office-staging-evidence/human-review-record.json';
+          const record = JSON.parse(fs.readFileSync(file, 'utf8'));
+          if (record.artifactId !== 'PHX-COMP-OFFICE-009') throw new Error('PHX-009 artifact mismatch');
+          if (record.reviewer !== process.env.GITHUB_ACTOR) throw new Error('Reviewer must be the authenticated workflow actor');
+          if (record.routingScoresUpdated !== false) throw new Error('Routing scores must remain unchanged');
+          if (record.productionAuthorityGranted !== false) throw new Error('Production authority must remain false');
+          if (record.microsoftGraphAuthorityGranted !== false) throw new Error('Microsoft Graph authority must remain false');
+          NODE
+
+      - name: Upload PHX-009 review record
+        uses: actions/upload-artifact@v4
+        with:
+          name: office-companion-human-review-${{ inputs.source_run_id }}-${{ github.run_id }}
+          path: |
+            artifacts/office-staging-evidence/human-review-record.json
+            artifacts/office-staging-evidence/evidence-review.json
+            artifacts/office-staging-evidence/evidence-review.md
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish human review summary
+        shell: bash
+        run: |
+          {
+            echo "## Phoenix Office Companion human review"
+            echo "- Executive Office: Billy"
+            echo "- Source staging run: ${{ inputs.source_run_id }}"
+            echo "- Reviewer: $GITHUB_ACTOR"
+            echo "- Decision: ${{ inputs.decision }}"
+            echo "- Record: PHX-COMP-OFFICE-009"
+            echo "- Routing scores changed: no"
+            echo "- Production authority granted: no"
+            echo "- Microsoft Graph authority granted: no"
+            echo "- Any routing evidence promotion still requires a separate reviewed repository change"
+          } >> "$GITHUB_STEP_SUMMARY"
