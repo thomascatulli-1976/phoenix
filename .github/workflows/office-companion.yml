@@ -22,6 +22,7 @@ on:
       - ".github/workflows/office-companion.yml"
       - ".github/workflows/office-companion-staging.yml"
       - ".github/workflows/office-companion-staging-preflight.yml"
+      - ".github/workflows/office-companion-human-review.yml"
   push:
     branches:
       - main
@@ -45,6 +46,7 @@ on:
       - ".github/workflows/office-companion.yml"
       - ".github/workflows/office-companion-staging.yml"
       - ".github/workflows/office-companion-staging-preflight.yml"
+      - ".github/workflows/office-companion-human-review.yml"
   workflow_dispatch:
 
 permissions:
