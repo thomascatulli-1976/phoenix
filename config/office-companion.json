@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2",
+  "schemaVersion": "1.3",
   "companion": {
     "id": "phoenix-office-companion",
     "registryKey": "phx:companion:office-companion",
@@ -37,6 +37,11 @@
         "id": "PHX-COMP-OFFICE-005",
         "driveFileId": "1-Mf73aav4l7OCvjUXgF26s_bxqLJT5z8e0qkJkKmvPU",
         "title": "Multi-Provider Adapter Expansion and Evaluation Framework v1.0"
+      },
+      {
+        "id": "PHX-COMP-OFFICE-006",
+        "driveFileId": "18zeKeISjwexhOIr1YRTEJl_gorJrSjsg9J5qGOTYyfA",
+        "title": "Governed Staging Deployment and Provider Evidence Protocol v1.0"
       }
     ],
     "technicalRepository": "thomascatulli-1976/phoenix"
@@ -142,6 +147,22 @@
     ],
     "productionScoresMayBeInvented": false
   },
+  "stagingDeployment": {
+    "status": "prepared-not-provisioned",
+    "target": "azure-container-apps",
+    "githubEnvironment": "office-companion-staging",
+    "deploymentWorkflow": ".github/workflows/office-companion-staging.yml",
+    "authentication": "github-oidc",
+    "containerRegistry": "azure-container-registry",
+    "containerImageTag": "git-sha",
+    "runtimeIdentity": "user-assigned-managed-identity",
+    "secretSource": "azure-key-vault-references",
+    "proofDataClass": "green",
+    "proofProviders": ["gemini", "claude", "chatgpt"],
+    "fallbackAllowed": false,
+    "evidencePromotionRequiresHumanReview": true,
+    "microsoftGraphWrites": false
+  },
   "operatingModes": ["find", "think", "build", "validate", "publish"],
   "dataGate": {
     "green": "allowed-by-policy",
@@ -156,5 +177,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "Execute approved GREEN-data staging proofs for Gemini, Claude and ChatGPT, compare results through the evaluation framework, approve evidence updates and then design the separately governed Microsoft Graph connector."
+  "nextDeliverable": "After authorized Azure OIDC, Key Vault and provider-secret prerequisites are supplied, run one GREEN-data staging proof per provider, review the evidence and then open the separately governed Microsoft Graph connector design gate."
 }

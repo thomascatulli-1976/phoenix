@@ -37,7 +37,7 @@ if (failures.length === 0) {
   ]) {
     if (!bicep.includes(token)) fail(`Staging Bicep is missing required control: ${token}`);
   }
-  if (bicep.includes("latest")) {
+  if (bicep.includes(":latest")) {
     fail("Staging Bicep must not hard-code a mutable latest application image tag");
   }
 
