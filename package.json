@@ -10,14 +10,18 @@
     "validate:billy": "node scripts/validate-billy.mjs",
     "validate:office": "node scripts/validate-office-companion.mjs",
     "validate:office-staging": "node scripts/validate-office-staging.mjs",
+    "validate:office-evidence-review": "node scripts/validate-office-evidence-review.mjs",
     "acceptance:family": "tsx src/modules/family/fixtures/run-acceptance-suite.ts",
     "acceptance:office": "tsx src/companions/office-companion/fixtures/run-acceptance-suite.ts",
     "acceptance:office-gemini": "tsx src/companions/office-companion/fixtures/run-gemini-adapter-acceptance.ts",
     "acceptance:office-multi": "tsx src/companions/office-companion/fixtures/run-multi-provider-acceptance.ts",
     "acceptance:office-staging": "tsx src/companions/office-companion/fixtures/run-staging-proof-acceptance.ts",
+    "acceptance:office-evidence-review": "tsx src/companions/office-companion/fixtures/run-evidence-review-acceptance.ts",
     "smoke:office-server": "tsx src/companions/office-companion/fixtures/run-server-smoke.ts",
-    "staging:office-proof": "tsx src/companions/office-companion/staging/run-staging-proof.ts",
-    "test": "npm run validate:billy && npm run validate:office && npm run validate:office-staging && npm run typecheck && npm run acceptance:family && npm run acceptance:office && npm run smoke:office-server && npm run acceptance:office-gemini && npm run acceptance:office-multi && npm run acceptance:office-staging && npm run build:office"
+    "staging:office-proof-only": "tsx src/companions/office-companion/staging/run-staging-proof.ts",
+    "staging:office-review-evidence": "tsx src/companions/office-companion/staging/review-evidence.ts",
+    "staging:office-proof": "npm run staging:office-proof-only && npm run staging:office-review-evidence",
+    "test": "npm run validate:billy && npm run validate:office && npm run validate:office-staging && npm run validate:office-evidence-review && npm run typecheck && npm run acceptance:family && npm run acceptance:office && npm run smoke:office-server && npm run acceptance:office-gemini && npm run acceptance:office-multi && npm run acceptance:office-staging && npm run acceptance:office-evidence-review && npm run build:office"
   },
   "devDependencies": {
     "@types/node": "^24.2.0",

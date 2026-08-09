@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0",
+  "artifact": {
+    "id": "PHX-COMP-OFFICE-008",
+    "driveFileId": "1_rUq_KsWB2fxWLOBInvupin6W4FFzFJ8kpszA6TEcsc",
+    "title": "Provider Evidence Review and Promotion Gate v1.0",
+    "executiveOffice": "Billy",
+    "canonicalDriveFolderId": "11xgFf_OR6Q6DqvKeH0iDOFDDoW4dOP1z",
+    "technicalRepository": "thomascatulli-1976/phoenix"
+  },
+  "sourceEvidence": {
+    "artifactId": "PHX-COMP-OFFICE-006",
+    "requiredDataClass": "green",
+    "requiredProviders": ["gemini", "claude", "chatgpt"],
+    "requiresGitSha": true,
+    "requiresWorkflowRunId": true
+  },
+  "automatedReview": {
+    "schemaAndGovernanceChecks": true,
+    "blockingFailureChecks": true,
+    "providerIdentityChecks": true,
+    "fallbackMustBeDisabled": true,
+    "humanReviewMustBeRequired": true,
+    "autonomousPublicationMustBeFalse": true,
+    "secretLeakHeuristics": true,
+    "promotionDecision": "eligible-for-human-review-only"
+  },
+  "humanGate": {
+    "required": true,
+    "allowedDecisions": ["PASS", "PASS WITH CONDITIONS", "REJECTED"],
+    "routingScoreUpdateAutomatic": false,
+    "routingScoreUpdateRequiresReviewedRepositoryChange": true,
+    "productionAuthorityGranted": false,
+    "microsoftGraphAuthorityGranted": false
+  }
+}
