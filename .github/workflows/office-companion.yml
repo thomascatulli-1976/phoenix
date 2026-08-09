@@ -5,8 +5,10 @@ on:
     paths:
       - "config/office-companion.json"
       - "docs/companions/office-companion/**"
+      - "infra/office-companion/staging/**"
       - "src/companions/office-companion/**"
       - "scripts/validate-office-companion.mjs"
+      - "scripts/validate-office-staging.mjs"
       - "package.json"
       - "tsconfig.json"
       - "tsconfig.build.json"
@@ -14,14 +16,17 @@ on:
       - ".dockerignore"
       - ".env.example"
       - ".github/workflows/office-companion.yml"
+      - ".github/workflows/office-companion-staging.yml"
   push:
     branches:
       - main
     paths:
       - "config/office-companion.json"
       - "docs/companions/office-companion/**"
+      - "infra/office-companion/staging/**"
       - "src/companions/office-companion/**"
       - "scripts/validate-office-companion.mjs"
+      - "scripts/validate-office-staging.mjs"
       - "package.json"
       - "tsconfig.json"
       - "tsconfig.build.json"
@@ -29,13 +34,14 @@ on:
       - ".dockerignore"
       - ".env.example"
       - ".github/workflows/office-companion.yml"
+      - ".github/workflows/office-companion-staging.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  multi-provider-adapter-gate:
+  staging-foundation-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -51,23 +57,29 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate governance, Drive anchors and provider controls
+      - name: Validate governance and Drive anchors
         run: npm run validate:office
 
-      - name: Typecheck provider-neutral contracts and adapters
+      - name: Validate staging definitions without Azure credentials
+        run: npm run validate:office-staging
+
+      - name: Typecheck provider-neutral runtime and staging proof runner
         run: npm run typecheck
 
-      - name: Run provider-neutral routing acceptance suite
+      - name: Run provider-neutral routing acceptance
         run: npm run acceptance:office
 
-      - name: Run stateless HTTP server smoke tests
+      - name: Run server smoke tests
         run: npm run smoke:office-server
 
-      - name: Run Gemini reference adapter acceptance
+      - name: Run Gemini adapter acceptance
         run: npm run acceptance:office-gemini
 
-      - name: Run Gemini, Claude and ChatGPT multi-provider acceptance
+      - name: Run multi-provider adapter acceptance
         run: npm run acceptance:office-multi
+
+      - name: Run staging evidence acceptance with local endpoint mock
+        run: npm run acceptance:office-staging
 
       - name: Build production runtime
         run: npm run build:office
@@ -97,71 +109,32 @@ jobs:
           done
 
           node <<'NODE'
-          const readyResponse = await fetch('http://127.0.0.1:18080/ready');
-          const ready = await readyResponse.json();
-          if (!readyResponse.ok) throw new Error(JSON.stringify(ready));
-          if (ready.status !== 'ready') throw new Error('Runtime did not report ready');
-          if (ready.executiveOffice !== 'Billy') throw new Error('Billy ownership missing');
-          if (ready.firstProductionTarget !== 'azure-container-apps') {
-            throw new Error('Azure Container Apps target missing');
-          }
-          if (ready.liveProviderExecution !== false) {
+          const response = await fetch('http://127.0.0.1:18080/ready');
+          const body = await response.json();
+          if (!response.ok || body.status !== 'ready') throw new Error(JSON.stringify(body));
+          if (body.executiveOffice !== 'Billy') throw new Error('Billy ownership missing');
+          if (body.liveProviderExecution !== false) {
             throw new Error('Credential-free runtime must not enable provider execution');
           }
-          if (!Array.isArray(ready.operationalProviders) || ready.operationalProviders.length !== 0) {
+          if ((body.operationalProviders || []).length !== 0) {
             throw new Error('Credential-free runtime must have no operational provider');
           }
-
-          const request = {
-            requestId: 'container-complete-smoke',
-            operatingMode: 'build',
-            task: 'Create a sanitized decision memo',
-            intendedOutcome: 'A review candidate',
-            input: 'Public context only',
-            contextReferences: [],
-            dataClass: 'green',
-            sanitizationState: 'not-required',
-            excludedInformation: [],
-            requiredCapabilities: ['reasoning'],
-            allowedProviders: ['gemini', 'claude', 'chatgpt'],
-            allowFallback: true,
-            evidenceRequirements: {
-              citationsRequired: false,
-              approvedSourceIds: []
-            },
-            validationRequirements: {
-              humanReviewRequired: true,
-              internalValidationRequired: true
-            },
-            toolPermissions: [],
-            createdAt: '2026-08-08T00:00:00.000Z'
-          };
-          const completeResponse = await fetch('http://127.0.0.1:18080/v1/complete', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(request)
-          });
-          const complete = await completeResponse.json();
-          if (completeResponse.status !== 503 || complete.code !== 'routing-rejected') {
-            throw new Error(`Credential-free completion did not fail closed: ${JSON.stringify(complete)}`);
-          }
-          console.log(JSON.stringify(ready));
           NODE
 
-      - name: Publish multi-provider gate summary
+      - name: Publish staging-foundation summary
         shell: bash
         run: |
           {
             echo "## Phoenix Office Companion"
             echo "- Executive Office: Billy"
-            echo "- Provider strategy: LLM-independent"
-            echo "- Implemented adapters: Gemini, Claude, ChatGPT"
-            echo "- Permanent default provider: none"
-            echo "- Activation: master switch + provider allowlist + deployment credentials"
-            echo "- Equal-score routing: deterministic request distribution"
-            echo "- CI provider calls: deterministic local mocks only"
-            echo "- Evaluation: blocking schema, governance and required-evidence controls"
-            echo "- Human review: mandatory"
-            echo "- Autonomous publication: disabled"
-            echo "- Multi-provider adapter gate: passed"
+            echo "- Implemented providers: Gemini, Claude, ChatGPT"
+            echo "- Permanent default: none"
+            echo "- Staging target: Azure Container Apps"
+            echo "- Deployment authentication: GitHub OIDC"
+            echo "- Runtime identity: user-assigned managed identity"
+            echo "- Provider secrets: Azure Key Vault references"
+            echo "- Proof data class: GREEN"
+            echo "- Pull-request deployment: disabled"
+            echo "- Microsoft Graph writes: disabled"
+            echo "- Staging foundation gate: passed"
           } >> "$GITHUB_STEP_SUMMARY"

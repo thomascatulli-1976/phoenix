@@ -12,6 +12,16 @@ Every material PHOENIX OS activity must record date/time, owner or agent, activi
 
 ## Entries
 
+### 2026-08-09 — Office Companion governed staging foundation initiated
+- **Owner / Agent:** Billy / PHOENIX Executive Office
+- **Activity:** Established `PHX-COMP-OFFICE-006`, Azure Container Apps staging infrastructure, a protected OIDC deployment workflow and a reproducible GREEN-data evidence runner for Gemini, Claude and ChatGPT.
+- **Affected artifacts / systems:** `PHX-COMP-OFFICE-006`; `infra/office-companion/staging`; `.github/workflows/office-companion-staging.yml`; Office staging proof and acceptance suite; repository configuration and validation; branch `feat/office-companion-staging-deployment`.
+- **Result / Status:** ACTIVE DEVELOPMENT — STAGING FOUNDATION. Infrastructure and evidence tooling are prepared for review without provisioning Azure resources or using provider credentials.
+- **Decision:** Live deployment is manual, protected by the `office-companion-staging` GitHub environment and authenticated through OIDC. Runtime provider secrets are Key Vault references accessed by a user-assigned managed identity. The first proofs are GREEN-only, explicitly provider-selected, fallback-disabled and non-publishing.
+- **Open points:** Azure federation, protected-environment approvals, resource identifiers, Key Vault secrets and model identifiers must be supplied by an authorized administrator. Live provider evidence does not yet exist.
+- **Errors / Blockers:** No authorized Azure or provider credentials are available in repository context; this correctly prevents live deployment while leaving deterministic CI validation available.
+- **Next step:** Pass CI and merge the staging foundation, then execute one approved GREEN-data proof per provider and submit the evidence for human review before any routing-score update or Microsoft Graph connector gate.
+
 ### 2026-08-08 — Office Companion multi-provider adapter gate initiated
 - **Owner / Agent:** Billy / PHOENIX Executive Office
 - **Activity:** Expanded the Office Companion from the Gemini reference adapter to provider-neutral Gemini, Claude and ChatGPT adapters, independent activation, shared prompting, fair equal-score routing and deterministic provider evaluation.
