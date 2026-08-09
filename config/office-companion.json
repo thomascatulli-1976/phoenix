@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.3",
+  "schemaVersion": "1.4",
   "companion": {
     "id": "phoenix-office-companion",
     "registryKey": "phx:companion:office-companion",
@@ -42,6 +42,11 @@
         "id": "PHX-COMP-OFFICE-006",
         "driveFileId": "18zeKeISjwexhOIr1YRTEJl_gorJrSjsg9J5qGOTYyfA",
         "title": "Governed Staging Deployment and Provider Evidence Protocol v1.0"
+      },
+      {
+        "id": "PHX-COMP-OFFICE-007",
+        "driveFileId": "1TmBb66IJ7UDDHtmtKt0bdcWlGT09faSKcDGS6JwEotU",
+        "title": "Staging Administration Handoff and Live Proof Runbook v1.0"
       }
     ],
     "technicalRepository": "thomascatulli-1976/phoenix"
@@ -163,6 +168,23 @@
     "evidencePromotionRequiresHumanReview": true,
     "microsoftGraphWrites": false
   },
+  "stagingAdministration": {
+    "status": "external-prerequisites-required",
+    "runbookArtifact": "PHX-COMP-OFFICE-007",
+    "githubEnvironment": "office-companion-staging",
+    "requiredEnvironmentSecrets": [
+      "AZURE_CLIENT_ID",
+      "AZURE_TENANT_ID",
+      "AZURE_SUBSCRIPTION_ID"
+    ],
+    "oidcIssuer": "https://token.actions.githubusercontent.com",
+    "oidcAudience": "api://AzureADTokenExchange",
+    "expectedImmutableSubject": "repo:thomascatulli-1976@300130643/phoenix@1307927751:environment:office-companion-staging",
+    "liveProofStatus": "not-executed",
+    "providerEvidenceStatus": "none",
+    "productionAuthority": false,
+    "microsoftGraphAuthority": false
+  },
   "operatingModes": ["find", "think", "build", "validate", "publish"],
   "dataGate": {
     "green": "allowed-by-policy",
@@ -177,5 +199,5 @@
     "humanApprovalRequired": true,
     "failClosed": true
   },
-  "nextDeliverable": "After authorized Azure OIDC, Key Vault and provider-secret prerequisites are supplied, run one GREEN-data staging proof per provider, review the evidence and then open the separately governed Microsoft Graph connector design gate."
+  "nextDeliverable": "Complete the PHX-COMP-OFFICE-007 administration checklist, configure the protected GitHub environment, Azure OIDC federation and Key Vault secret references, then execute and review one GREEN-data staging proof per provider."
 }

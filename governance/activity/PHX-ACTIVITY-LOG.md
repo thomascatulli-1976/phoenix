@@ -12,6 +12,16 @@ Every material PHOENIX OS activity must record date/time, owner or agent, activi
 
 ## Entries
 
+### 2026-08-09 — Office Companion staging administration handoff established
+- **Owner / Agent:** Billy / PHOENIX Executive Office
+- **Activity:** Created `PHX-COMP-OFFICE-007` as the binding Azure/GitHub administration handoff and live-proof runbook, including protected-environment secrets and variables, OIDC trust, Azure permission requirements, Key Vault preparation, execution, evidence review and rollback.
+- **Affected artifacts / systems:** `PHX-COMP-OFFICE-007`; `config/office-companion.json`; Office Companion README and technical handoff; governance validator; branch `docs/office-companion-staging-admin-handoff`.
+- **Result / Status:** READY FOR ADMINISTRATION. All repository-controlled work before the live staging proof is documented and registered. No Azure resource or real provider call is claimed.
+- **Decision:** The next gate is external administration rather than additional provider-core development. Live execution requires the protected `office-companion-staging` environment, verified GitHub OIDC federation, Azure deployment and role-assignment authority, Key Vault provider secrets and approved model identifiers.
+- **Open points:** An authorized administrator must provide and approve the external Azure, GitHub environment and provider-secret prerequisites. Live proof evidence remains `none` until a protected manual workflow run completes and is reviewed.
+- **Errors / Blockers:** The current environment has no authorized Azure federation or provider secret access. This intentionally prevents deployment and preserves the fail-closed boundary.
+- **Next step:** Pass CI and merge the handoff registration, configure the external prerequisites, run the GREEN-only three-provider staging workflow, and submit the evidence for Billy or delegated human review.
+
 ### 2026-08-09 — Office Companion governed staging foundation initiated
 - **Owner / Agent:** Billy / PHOENIX Executive Office
 - **Activity:** Established `PHX-COMP-OFFICE-006`, Azure Container Apps staging infrastructure, a protected OIDC deployment workflow and a reproducible GREEN-data evidence runner for Gemini, Claude and ChatGPT.
