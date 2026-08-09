@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "artifactId": "PHX-COMP-OFFICE-009",
+  "driveFileId": "1EkFpo711nnTfrEwXBs4HW6KI6kBhok_1Bsvwy5NTUo0",
+  "sourceReviewArtifactId": "PHX-COMP-OFFICE-008",
+  "executiveOffice": "Billy",
+  "allowedDecisions": ["PASS", "PASS WITH CONDITIONS", "REJECTED"],
+  "preconditions": {
+    "requiredReviewStatus": "ELIGIBLE_FOR_HUMAN_REVIEW",
+    "requiredProviders": ["gemini", "claude", "chatgpt"],
+    "requiredDataClass": "green",
+    "requireGitSha": true,
+    "requireWorkflowRunId": true
+  },
+  "recordRequirements": {
+    "reviewerIdentityRequired": true,
+    "decisionTimestampRequired": true,
+    "rationaleRequired": true,
+    "conditionsRequiredForConditionalPass": true,
+    "sourceEvidenceReferenceRequired": true
+  },
+  "promotionBoundary": {
+    "automaticApproval": false,
+    "automaticRoutingScoreUpdate": false,
+    "automaticProductionAuthority": false,
+    "automaticMicrosoftGraphAuthority": false,
+    "routingEvidenceProposalAllowed": true,
+    "proposalMustBeReviewedRepositoryChange": true
+  }
+}
