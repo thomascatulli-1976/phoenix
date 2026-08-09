@@ -17,6 +17,7 @@ on:
       - ".env.example"
       - ".github/workflows/office-companion.yml"
       - ".github/workflows/office-companion-staging.yml"
+      - ".github/workflows/office-companion-staging-preflight.yml"
   push:
     branches:
       - main
@@ -35,6 +36,7 @@ on:
       - ".env.example"
       - ".github/workflows/office-companion.yml"
       - ".github/workflows/office-companion-staging.yml"
+      - ".github/workflows/office-companion-staging-preflight.yml"
   workflow_dispatch:
 
 permissions:
