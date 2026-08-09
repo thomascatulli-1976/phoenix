@@ -1,0 +1,199 @@
+name: Phoenix Office Companion Staging Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      enabled_providers:
+        description: Comma-separated canonical provider list to validate.
+        required: true
+        type: string
+        default: gemini,claude,chatgpt
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: office-companion-staging-preflight
+  cancel-in-progress: false
+
+env:
+  AZURE_CORE_OUTPUT: none
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: office-companion-staging
+    env:
+      AZURE_RESOURCE_GROUP: ${{ vars.OFFICE_STAGING_RESOURCE_GROUP }}
+      AZURE_LOCATION: ${{ vars.OFFICE_STAGING_LOCATION }}
+      OFFICE_NAME_PREFIX: ${{ vars.OFFICE_STAGING_NAME_PREFIX }}
+      AZURE_ACR_NAME: ${{ vars.OFFICE_STAGING_ACR_NAME }}
+      KEY_VAULT_SUBSCRIPTION_ID: ${{ vars.OFFICE_STAGING_KEY_VAULT_SUBSCRIPTION_ID }}
+      KEY_VAULT_RESOURCE_GROUP: ${{ vars.OFFICE_STAGING_KEY_VAULT_RESOURCE_GROUP }}
+      KEY_VAULT_NAME: ${{ vars.OFFICE_STAGING_KEY_VAULT_NAME }}
+      GEMINI_MODEL_VALUE: ${{ vars.OFFICE_STAGING_GEMINI_MODEL }}
+      GEMINI_SECRET_NAME: ${{ vars.OFFICE_STAGING_GEMINI_SECRET_NAME }}
+      CLAUDE_MODEL_VALUE: ${{ vars.OFFICE_STAGING_CLAUDE_MODEL }}
+      CLAUDE_SECRET_NAME: ${{ vars.OFFICE_STAGING_CLAUDE_SECRET_NAME }}
+      OPENAI_MODEL_VALUE: ${{ vars.OFFICE_STAGING_OPENAI_MODEL }}
+      OPENAI_SECRET_NAME: ${{ vars.OFFICE_STAGING_OPENAI_SECRET_NAME }}
+      DEPLOYMENT_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@v4
+
+      - name: Validate non-secret staging configuration
+        id: config
+        env:
+          RAW_PROVIDERS: ${{ inputs.enabled_providers }}
+        shell: bash
+        run: |
+          set -eu
+          node <<'NODE'
+          const fs = require('node:fs');
+          const canonical = ['gemini', 'claude', 'chatgpt'];
+          const raw = (process.env.RAW_PROVIDERS || '')
+            .split(',')
+            .map((entry) => entry.trim().toLowerCase())
+            .filter(Boolean);
+
+          if (raw.length === 0) throw new Error('At least one provider is required.');
+          if (new Set(raw).size !== raw.length) throw new Error('Provider list contains duplicates.');
+          for (const provider of raw) {
+            if (!canonical.includes(provider)) throw new Error(`Unknown provider: ${provider}`);
+          }
+          const providers = canonical.filter((provider) => raw.includes(provider));
+
+          const required = (name, value) => {
+            if (!value || !value.trim()) throw new Error(`Missing required staging configuration: ${name}`);
+            return value.trim();
+          };
+
+          const subscriptionId = required('AZURE_SUBSCRIPTION_ID', process.env.DEPLOYMENT_SUBSCRIPTION_ID);
+          const resourceGroup = required('OFFICE_STAGING_RESOURCE_GROUP', process.env.AZURE_RESOURCE_GROUP);
+          const location = required('OFFICE_STAGING_LOCATION', process.env.AZURE_LOCATION);
+          const namePrefix = required('OFFICE_STAGING_NAME_PREFIX', process.env.OFFICE_NAME_PREFIX);
+          const acrName = required('OFFICE_STAGING_ACR_NAME', process.env.AZURE_ACR_NAME);
+          const keyVaultResourceGroup = required(
+            'OFFICE_STAGING_KEY_VAULT_RESOURCE_GROUP',
+            process.env.KEY_VAULT_RESOURCE_GROUP,
+          );
+          const keyVaultName = required('OFFICE_STAGING_KEY_VAULT_NAME', process.env.KEY_VAULT_NAME);
+          const keyVaultSubscriptionId =
+            (process.env.KEY_VAULT_SUBSCRIPTION_ID || '').trim() || subscriptionId;
+
+          if (!/^[a-z0-9]{5,50}$/.test(acrName)) {
+            throw new Error('OFFICE_STAGING_ACR_NAME must be 5-50 lowercase alphanumeric characters.');
+          }
+          if (!/^[a-z0-9-]{2,24}$/.test(namePrefix) || namePrefix.startsWith('-') || namePrefix.endsWith('-')) {
+            throw new Error('OFFICE_STAGING_NAME_PREFIX must be lowercase alphanumeric/hyphen and 2-24 characters.');
+          }
+
+          const providerConfiguration = {
+            gemini: [process.env.GEMINI_MODEL_VALUE, process.env.GEMINI_SECRET_NAME],
+            claude: [process.env.CLAUDE_MODEL_VALUE, process.env.CLAUDE_SECRET_NAME],
+            chatgpt: [process.env.OPENAI_MODEL_VALUE, process.env.OPENAI_SECRET_NAME],
+          };
+          for (const provider of providers) {
+            const [model, secretName] = providerConfiguration[provider];
+            required(`${provider} model`, model);
+            required(`${provider} Key Vault secret name`, secretName);
+          }
+
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            [
+              `providers_csv=${providers.join(',')}`,
+              `subscription_id=${subscriptionId}`,
+              `resource_group=${resourceGroup}`,
+              `location=${location}`,
+              `key_vault_subscription_id=${keyVaultSubscriptionId}`,
+              `key_vault_resource_group=${keyVaultResourceGroup}`,
+              `key_vault_name=${keyVaultName}`,
+            ].join('\n') + '\n',
+          );
+          NODE
+
+      - name: Azure login with OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure identity and subscription
+        shell: bash
+        run: |
+          set -eu
+          az account show --only-show-errors --output none
+          active_subscription="$(az account show --query id --output tsv --only-show-errors)"
+          test "$active_subscription" = "${{ steps.config.outputs.subscription_id }}"
+
+      - name: Verify required resource providers are registered
+        shell: bash
+        run: |
+          set -eu
+          for namespace in Microsoft.App Microsoft.ContainerRegistry Microsoft.OperationalInsights Microsoft.ManagedIdentity Microsoft.KeyVault; do
+            state="$(az provider show --namespace "$namespace" --query registrationState --output tsv --only-show-errors)"
+            if [ "$state" != "Registered" ]; then
+              echo "Resource provider is not registered: $namespace ($state)"
+              exit 1
+            fi
+          done
+
+      - name: Verify Key Vault coordinates and RBAC mode
+        shell: bash
+        run: |
+          set -eu
+          az account set --subscription "${{ steps.config.outputs.key_vault_subscription_id }}"
+          vault_json="$(az keyvault show \
+            --resource-group "${{ steps.config.outputs.key_vault_resource_group }}" \
+            --name "${{ steps.config.outputs.key_vault_name }}" \
+            --only-show-errors \
+            --output json)"
+          VAULT_JSON="$vault_json" node <<'NODE'
+          const vault = JSON.parse(process.env.VAULT_JSON || '{}');
+          if (vault.properties?.enableRbacAuthorization !== true) {
+            throw new Error('Approved Key Vault must have Azure RBAC authorization enabled.');
+          }
+          NODE
+          az account set --subscription "${{ steps.config.outputs.subscription_id }}"
+
+      - name: Check staging resource-group state without creating it
+        shell: bash
+        run: |
+          set -eu
+          if az group exists --name "${{ steps.config.outputs.resource_group }}" | grep -q true; then
+            actual_location="$(az group show \
+              --name "${{ steps.config.outputs.resource_group }}" \
+              --query location \
+              --output tsv \
+              --only-show-errors)"
+            echo "Staging resource group already exists in: $actual_location"
+          else
+            echo "Staging resource group does not yet exist; deployment workflow may create it."
+          fi
+
+      - name: Publish preflight summary
+        shell: bash
+        run: |
+          {
+            echo "## Phoenix Office Companion staging preflight"
+            echo "- Executive Office: Billy"
+            echo "- Mode: read-only administration preflight"
+            echo "- OIDC login: passed"
+            echo "- Subscription: verified"
+            echo "- Providers requested: ${{ steps.config.outputs.providers_csv }}"
+            echo "- Azure resource providers: registered"
+            echo "- Key Vault: reachable and RBAC-enabled"
+            echo "- Azure resources created: none"
+            echo "- Provider API calls: none"
+            echo "- Microsoft Graph writes: none"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Azure logout
+        if: always()
+        run: az logout
