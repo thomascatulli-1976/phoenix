@@ -7,6 +7,7 @@ const requiredFiles = [
   ".env.example",
   "tsconfig.build.json",
   "docs/companions/office-companion/README.md",
+  "docs/companions/office-companion/STAGING-ADMIN-HANDOFF.md",
   "src/companions/office-companion/contracts.ts",
   "src/companions/office-companion/provider-registry.ts",
   "src/companions/office-companion/router.ts",
@@ -46,11 +47,12 @@ if (failures.length === 0) {
   const workflow = cfg.controlledWorkflow ?? {};
   const evaluation = cfg.evaluationFramework ?? {};
   const staging = cfg.stagingDeployment ?? {};
+  const stagingAdministration = cfg.stagingAdministration ?? {};
   const execution = cfg.executionPolicy ?? {};
   const dataGate = cfg.dataGate ?? {};
   const canonicalProviders = ["gemini", "claude", "chatgpt"];
 
-  if (cfg.schemaVersion !== "1.3") fail("Office Companion schema version must be 1.3");
+  if (cfg.schemaVersion !== "1.4") fail("Office Companion schema version must be 1.4");
   if (companion.id !== "phoenix-office-companion") fail("Companion ID is invalid");
   if (companion.registryKey !== "phx:companion:office-companion") fail("Companion registry key is invalid");
   if (companion.type !== "specialized-companion") fail("Office Companion must remain a specialized companion");
@@ -68,6 +70,7 @@ if (failures.length === 0) {
     ["PHX-COMP-OFFICE-004", "1judeekl2lyh5LONT4Ad_wkhsf2Vqftq0A1pSVhzAilY"],
     ["PHX-COMP-OFFICE-005", "1-Mf73aav4l7OCvjUXgF26s_bxqLJT5z8e0qkJkKmvPU"],
     ["PHX-COMP-OFFICE-006", "18zeKeISjwexhOIr1YRTEJl_gorJrSjsg9J5qGOTYyfA"],
+    ["PHX-COMP-OFFICE-007", "1TmBb66IJ7UDDHtmtKt0bdcWlGT09faSKcDGS6JwEotU"],
   ]);
   const artifactMap = new Map(
     (companion.canonicalArtifacts ?? []).map((artifact) => [artifact.id, artifact]),
@@ -150,6 +153,30 @@ if (failures.length === 0) {
     }
   }
 
+  const expectedStagingAdministration = {
+    status: "external-prerequisites-required",
+    runbookArtifact: "PHX-COMP-OFFICE-007",
+    githubEnvironment: "office-companion-staging",
+    requiredEnvironmentSecrets: [
+      "AZURE_CLIENT_ID",
+      "AZURE_TENANT_ID",
+      "AZURE_SUBSCRIPTION_ID",
+    ],
+    oidcIssuer: "https://token.actions.githubusercontent.com",
+    oidcAudience: "api://AzureADTokenExchange",
+    expectedImmutableSubject:
+      "repo:thomascatulli-1976@300130643/phoenix@1307927751:environment:office-companion-staging",
+    liveProofStatus: "not-executed",
+    providerEvidenceStatus: "none",
+    productionAuthority: false,
+    microsoftGraphAuthority: false,
+  };
+  for (const [key, value] of Object.entries(expectedStagingAdministration)) {
+    if (JSON.stringify(stagingAdministration[key]) !== JSON.stringify(value)) {
+      fail(`Staging administration configuration is invalid: ${key}`);
+    }
+  }
+
   if (dataGate.green !== "allowed-by-policy") fail("GREEN data policy is invalid");
   if (dataGate.yellow !== "requires-sanitization") fail("YELLOW data must require sanitization");
   if (dataGate.red !== "reject-external-provider-by-default") fail("RED data must be rejected");
@@ -181,6 +208,15 @@ if (failures.length === 0) {
       'dataClass: "green"',
       "allowFallback: false",
       "evaluateOfficeCompletion",
+    ],
+    "docs/companions/office-companion/STAGING-ADMIN-HANDOFF.md": [
+      "PHX-COMP-OFFICE-007",
+      "office-companion-staging",
+      "AZURE_CLIENT_ID",
+      "AZURE_TENANT_ID",
+      "AZURE_SUBSCRIPTION_ID",
+      "Microsoft.Authorization/roleAssignments/write",
+      "GREEN",
     ],
   };
   for (const [file, tokens] of Object.entries(sourceChecks)) {
@@ -226,5 +262,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "Phoenix Office Companion governance configuration is valid: Billy ownership, six Drive artifacts, three provider adapters, controlled evaluation and a prepared-but-not-provisioned GREEN-data staging gate.",
+  "Phoenix Office Companion governance configuration is valid: Billy ownership, seven Drive artifacts, three provider adapters, controlled evaluation, a prepared-but-not-provisioned GREEN-data staging gate and an explicit external administration handoff.",
 );
