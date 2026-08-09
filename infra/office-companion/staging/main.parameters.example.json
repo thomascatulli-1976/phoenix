@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "westeurope" },
+    "namePrefix": { "value": "phx-office-stg" },
+    "acrName": { "value": "replacewithgloballyuniquename" },
+    "containerImage": { "value": "" },
+    "deployContainerApp": { "value": false },
+    "enabledProviders": { "value": [] },
+    "keyVaultSubscriptionId": { "value": "00000000-0000-0000-0000-000000000000" },
+    "keyVaultResourceGroupName": { "value": "replace-with-key-vault-resource-group" },
+    "keyVaultName": { "value": "replace-with-key-vault-name" },
+    "geminiModel": { "value": "" },
+    "geminiSecretName": { "value": "" },
+    "claudeModel": { "value": "" },
+    "claudeSecretName": { "value": "" },
+    "openAiModel": { "value": "" },
+    "openAiSecretName": { "value": "" }
+  }
+}
